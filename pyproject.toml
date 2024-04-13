@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "server-harmonic"
+version = "0.1.0"
+description = "The best harmonic server in the universe"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+black = "^24.3.0"
+mypy = "^1.9.0"
+loguru = "^0.7.2"
+cryptography = "^42.0.5"
+librosa = "^0.10.1"
+matplotlib = "^3.8.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
