@@ -16,7 +16,7 @@ FORMAT = pyaudio.paInt16
 RATE = 44100
 
 
-def count_similar_sounds(target_audio_path, recording_path, similarity_threshold=0.7):
+def count_similar_sounds(target_audio_path, recording_path, similarity_threshold):
     try:
         # Load the target sound and recording
         target_audio, _ = librosa.load(target_audio_path)
@@ -39,7 +39,10 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
                 count += 1
 
         # Print the total number of occurrences
-        print("Number of occurrences:", count)
+        # print("Number of occurrences:", count)
+
+        # Return the total number of occurrences
+        return count
 
     except Exception as e:
         logger.exception("Oops", e)

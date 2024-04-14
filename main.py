@@ -2,14 +2,19 @@ import atexit
 import socket
 from concurrent.futures import ThreadPoolExecutor
 from urllib import request
+import os
 
 from loguru import logger
 
 from tcp_by_size import send_with_size, recv_by_size
 import DBHelper
+import counter
 
 executor = ThreadPoolExecutor(max_workers=10)
 file_short_record = {}
+
+SIZE_TO_CHECK = 20000
+similarity_threshold = 0.7
 
 
 def login_user(username, password, DB):
@@ -58,9 +63,32 @@ def save_short_record(username: str, state, content):
         return "Error saving record"
 
 
-def count_occurrences(data):
-    # Your logic for counting occurrences here
-    pass
+def count_occurrences(username: str, state, readSize, content):
+    logger.info("Got packet: {}, {}", username, state)
+    try:
+        filename = username + "_long.ogg"
+        with open(filename, "ab") as file:
+            file.write(content)
+
+        file_size = os.stat(filename).st_size
+
+        if state == "1" or readSize < 1024 or file_size >= SIZE_TO_CHECK:
+            sound_file_name = username + "_process_long.ogg"
+            os.rename(filename, sound_file_name)
+            logger.info("Sent to process")
+            number_of_occurrences = counter.count_similar_sounds(
+                file_short_record[username],
+                sound_file_name,
+                similarity_threshold,
+            )
+            logger.info("Number of occurrences: {}", number_of_occurrences)
+            os.remove(sound_file_name)
+            return number_of_occurrences
+
+        return "Got short record"
+    except Exception as e:
+        logger.exception("{} Rais general Error", e)
+        return "Error saving record"
 
 
 def save_record(data):
