@@ -1,19 +1,21 @@
+import asyncio
 import atexit
-import socket
-from concurrent.futures import ThreadPoolExecutor
-from urllib import request
 import os
+import socket
+import sys
+import wave
+from concurrent.futures import ThreadPoolExecutor
 
 from loguru import logger
 
-from tcp_by_size import send_with_size, recv_by_size
 import DBHelper
 import counter
+from tcp_by_size import send_with_size, recv_by_size
 
 executor = ThreadPoolExecutor(max_workers=10)
 file_short_record = {}
 
-SIZE_TO_CHECK = 20000
+SIZE_TO_CHECK = 40000
 similarity_threshold = 0.7
 
 
@@ -63,31 +65,38 @@ def save_short_record(username: str, state, content):
         return "Error saving record"
 
 
-def count_occurrences(username: str, state, readSize, content):
+FRAMES_PER_SECOND = 44100
+
+
+def count_occurrences(username: str, state, read_size, content: bytes):
     logger.info("Got packet: {}, {}", username, state)
     try:
-        filename = username + "_long.ogg"
-        with open(filename, "ab") as file:
-            file.write(content)
+        filename = username + "_long.wav"
+
+        with wave.open(filename, mode="wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(1)
+            wav_file.setframerate(FRAMES_PER_SECOND)
+            wav_file.writeframes(content)
 
         file_size = os.stat(filename).st_size
-
-        if state == "1" or readSize < 1024 or file_size >= SIZE_TO_CHECK:
-            sound_file_name = username + "_process_long.ogg"
+        logger.info("Wrote {} bytes to {}", file_size, filename)
+        if state == "1" or int(read_size) < 40000 or file_size >= SIZE_TO_CHECK:
+            sound_file_name = username + "_process_long.wav"
             os.rename(filename, sound_file_name)
             logger.info("Sent to process")
             number_of_occurrences = counter.count_similar_sounds(
-                file_short_record[username],
+                username + "_short.ogg",
                 sound_file_name,
                 similarity_threshold,
             )
             logger.info("Number of occurrences: {}", number_of_occurrences)
             os.remove(sound_file_name)
-            return number_of_occurrences
+            return "Number of occurrences: " + str(number_of_occurrences)
 
         return "Got short record"
     except Exception as e:
-        logger.exception("{} Rais general Error", e)
+        logger.exception("General Error", e)
         return "Error saving record"
 
 
@@ -118,7 +127,12 @@ def handle_request(request_code, data, DB):
                     request_code.split("~")[1], request_code.split("~")[2], data
                 )  # name,state,data
             case "LongRecord":
-                to_send = count_occurrences(data.split("~")[1])
+                to_send = count_occurrences(
+                    request_code.split("~")[1],
+                    request_code.split("~")[2],
+                    request_code.split("~")[3],
+                    data,
+                )
             case "SaveRecord":
                 to_send = save_record(data.split("~")[1])
             case _:
@@ -130,14 +144,14 @@ def handle_request(request_code, data, DB):
         return "Error: {}", err
 
 
-# ShortRecoed~0~00011101010101
-# ShortRecoed~1~00011101010101
-def on_new_client(client_socket: socket, addr):
+async def on_new_client(client_socket: socket, addr):
     """Handles communication with a single client."""
     DB = DBHelper.DBHelper()
+    loop = asyncio.get_event_loop()
     while True:
         try:
-            data = recv_by_size(client_socket)
+
+            data = await recv_by_size(client_socket, loop)
             if not data:
                 logger.info("{}  Client disconnected", addr)
                 break
@@ -148,8 +162,8 @@ def on_new_client(client_socket: socket, addr):
             logger.info("{} >> {}", addr, request_code)
             data = handle_request(request_code, data, DB)
 
-            send_with_size(
-                client_socket, data.encode("utf-8")
+            await send_with_size(
+                client_socket, data.encode("utf-8"), loop
             )  # send data to the client
         except socket.error as e:
             logger.exception("{} Rais Socket Error", addr, e)
@@ -162,18 +176,23 @@ def on_new_client(client_socket: socket, addr):
 
 
 @logger.catch
-def main():
+async def main():
     host = "0.0.0.0"
     port = 2525
 
-    with socket.socket() as s:  # Use a context manager to ensure socket closure
+    with socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM
+    ) as s:  # Use a context manager to ensure socket closure
         s.bind((host, port))
         s.listen(5)
+        s.setblocking(False)
+
+        loop = asyncio.get_event_loop()
 
         while True:
-            c, addr = s.accept()
+            c, addr = await loop.sock_accept(s)
             logger.info("New connection from: {}", addr)
-            executor.submit(on_new_client, c, addr)
+            loop.create_task(on_new_client(c, addr))
 
 
 def on_exit() -> None:
@@ -182,6 +201,12 @@ def on_exit() -> None:
 
 
 if __name__ == "__main__":
+    logger.remove()
+    logger.add(
+        sys.stdout,
+        format="<light-blue>{time}</> <lvl>{level: <5}</lvl> [<yellow>{thread.name}</>] [<light-blue>{file}.{function}:{line}</>] {message}",
+    )
+    logger.add("debug.log")
     atexit.register(on_exit)
     logger.info("Server ready")
-    main()
+    asyncio.run(main())

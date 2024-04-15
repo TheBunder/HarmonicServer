@@ -19,6 +19,8 @@ RATE = 44100
 def count_similar_sounds(target_audio_path, recording_path, similarity_threshold):
     try:
         # Load the target sound and recording
+        logger.info("Target audio path: {}", target_audio_path)
+        logger.info("Recording path: {}", recording_path)
         target_audio, _ = librosa.load(target_audio_path)
         recorded_audio, _ = librosa.load(recording_path)
 
@@ -46,6 +48,7 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
 
     except Exception as e:
         logger.exception("Oops", e)
+        return 0
 
 
 def is_silent(snd_data):
