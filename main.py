@@ -5,7 +5,7 @@ import socket
 import sys
 import wave
 from concurrent.futures import ThreadPoolExecutor
-
+import random
 from loguru import logger
 
 import DBHelper
@@ -82,7 +82,9 @@ def count_occurrences(username: str, state, read_size, content: bytes):
         file_size = os.stat(filename).st_size
         logger.info("Wrote {} bytes to {}", file_size, filename)
         if state == "1" or int(read_size) < 40000 or file_size >= SIZE_TO_CHECK:
-            sound_file_name = username + "_process_long.wav"
+            sound_file_name = (
+                username + str(random.randint(0, 10000)) + "_process_long.wav"
+            )
             os.rename(filename, sound_file_name)
             logger.info("Sent to process")
             number_of_occurrences = counter.count_similar_sounds(
@@ -204,7 +206,8 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(
         sys.stdout,
-        format="<light-blue>{time}</> <lvl>{level: <5}</lvl> [<yellow>{thread.name}</>] [<light-blue>{file}.{function}:{line}</>] {message}",
+        format="<light-blue>{time}</> <lvl>{level: <5}</lvl> [<yellow>{thread.name}</>] [<light-blue>{file}.{"
+        "function}:{line}</>] {message}",
     )
     logger.add("debug.log")
     atexit.register(on_exit)
