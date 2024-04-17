@@ -1,9 +1,11 @@
 import asyncio
 import atexit
+import hashlib
 import os
 import socket
 import sys
 import wave
+from base64 import b64encode, b64decode
 from concurrent.futures import ThreadPoolExecutor
 import random
 from loguru import logger
@@ -11,12 +13,56 @@ from loguru import logger
 import DBHelper
 import counter
 from tcp_by_size import send_with_size, recv_by_size
+from send_receive_encrypted import new_client_key, recv_decrypted, send_encrypted
 
+# Thread for shutting down
 executor = ThreadPoolExecutor(max_workers=10)
+
+# Every user short file sound
 file_short_record = {}
 
+# variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
+FRAMES_PER_SECOND = 44100
 SIZE_TO_CHECK = 40000
 similarity_threshold = 0.7
+
+# variables for the encryption
+p_str = "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A63A3620FFFFFFFFFFFFFFFF"
+G = 2
+P = int(p_str, 16)
+A = random.randint(3, 5000)
+srv_DPH_key = int(pow(G, A, P))
+
+
+async def prepare_hybrid_encryption(sock, client_addr, loop):
+    # Get an encryption request from the user
+    await recv_by_size(sock, loop)
+
+    # Send the server's Diffie-Hellman public key (along with other parameters)
+    await send_with_size(sock, f"{srv_DPH_key}|{G}|{P}".encode(), loop)
+
+    # Receive the client's Diffie-Hellman public key
+    cli_dph_key = await recv_by_size(sock, loop)
+
+    # Calculate the shared key
+    secret_key = int(pow(int.from_bytes(cli_dph_key, "big"), A, P))
+
+    # Hash the shared key with SHA-256 and take the first 16 bytes
+    secret_key = hashlib.sha256(str(secret_key).encode()).digest()[:16]
+
+    # Receive IV from the client
+    iv = await recv_by_size(sock, loop)
+
+    logger.info(
+        "server DPH key: {}| P: {}\nclient DPH key: {}| shared key: {}\nclient iv: {}",
+        srv_DPH_key,
+        P,
+        cli_dph_key,
+        secret_key,
+        iv,
+    )
+
+    new_client_key(client_addr, secret_key, iv)
 
 
 def login_user(username, password, DB):
@@ -65,11 +111,8 @@ def save_short_record(username: str, state, content):
         return "Error saving record"
 
 
-FRAMES_PER_SECOND = 44100
-
-
-def count_occurrences(username: str, state, read_size, content: bytes):
-    logger.info("Got packet: {}, {}", username, state)
+def count_occurrences(username: str, content: bytes):
+    logger.info("Got packet: {}", username)
     try:
         filename = username + "_long.wav"
 
@@ -81,22 +124,19 @@ def count_occurrences(username: str, state, read_size, content: bytes):
 
         file_size = os.stat(filename).st_size
         logger.info("Wrote {} bytes to {}", file_size, filename)
-        if state == "1" or int(read_size) < 40000 or file_size >= SIZE_TO_CHECK:
-            sound_file_name = (
-                username + str(random.randint(0, 10000)) + "_process_long.wav"
-            )
-            os.rename(filename, sound_file_name)
-            logger.info("Sent to process")
-            number_of_occurrences = counter.count_similar_sounds(
-                username + "_short.ogg",
-                sound_file_name,
-                similarity_threshold,
-            )
-            logger.info("Number of occurrences: {}", number_of_occurrences)
-            os.remove(sound_file_name)
-            return "Number of occurrences: " + str(number_of_occurrences)
+        sound_file_name = username + str(random.randint(0, 10000)) + "_process_long.wav"
+        os.rename(filename, sound_file_name)
+        # count occurrences
+        logger.info("Sent to process")
+        number_of_occurrences = counter.count_similar_sounds(
+            username + "_short.ogg",
+            sound_file_name,
+            similarity_threshold,
+        )
+        logger.info("Number of occurrences: {}", number_of_occurrences)
+        os.remove(sound_file_name)
+        return "Number of occurrences: " + str(number_of_occurrences)
 
-        return "Got short record"
     except Exception as e:
         logger.exception("General Error", e)
         return "Error saving record"
@@ -131,8 +171,6 @@ def handle_request(request_code, data, DB):
             case "LongRecord":
                 to_send = count_occurrences(
                     request_code.split("~")[1],
-                    request_code.split("~")[2],
-                    request_code.split("~")[3],
                     data,
                 )
             case "SaveRecord":
@@ -148,22 +186,30 @@ def handle_request(request_code, data, DB):
 
 async def on_new_client(client_socket: socket, addr):
     """Handles communication with a single client."""
-    DB = DBHelper.DBHelper()
+    is_login = False
+    db = DBHelper.DBHelper()
     loop = asyncio.get_event_loop()
+    await prepare_hybrid_encryption(client_socket, addr, loop)
     while True:
         try:
-
-            data = await recv_by_size(client_socket, loop)
+            if not is_login:
+                data = await recv_decrypted(client_socket, addr, loop)
+            else:
+                data = await recv_by_size(client_socket, loop)
             if not data:
                 logger.info("{}  Client disconnected", addr)
                 break
+
             size_to_decode = int(data[0])
+
+            logger.info(str(size_to_decode))
             request_code = data[1 : size_to_decode + 1].decode("utf-8")
             data = data[size_to_decode + 1 :]
 
             logger.info("{} >> {}", addr, request_code)
-            data = handle_request(request_code, data, DB)
-
+            data = handle_request(request_code, data, db)
+            if data == "Username and password match":
+                is_login = True
             await send_with_size(
                 client_socket, data.encode("utf-8"), loop
             )  # send data to the client
