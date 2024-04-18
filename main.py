@@ -9,6 +9,7 @@ from base64 import b64encode, b64decode
 from concurrent.futures import ThreadPoolExecutor
 import random
 from loguru import logger
+import shutil
 
 import DBHelper
 import counter
@@ -79,7 +80,7 @@ def sign_up_user(username, password, DB):
         logger.info("Username is in use: {}", username)
         return "Username is in use"
     else:
-        if DB.insert_data(username, password):
+        if DB.insert_data_to_users_table(username, password):
             logger.info("Signed up successfully: {}, {}", username, password)
             return "Sign up successful"
         else:
@@ -109,6 +110,27 @@ def save_short_record(username: str, state, content):
     except Exception as e:
         logger.exception("{} Rais general Error", e)
         return "Error saving record"
+
+
+def make_short_record(username: str, sound_name, DB):
+    logger.info("Got packet: {}, {}", username, sound_name)
+    try:
+        exist_file = DB.get_file_name_from_sound(sound_name)
+        filename = username + "_short.ogg"
+        with open(exist_file, "rb") as f_src:
+            with open(filename, "wb") as f_dest:
+                # Copy the contents of the original file to the new file
+                while True:
+                    chunk = f_src.read(1024)
+                    if not chunk:
+                        break
+                    f_dest.write(chunk)
+        logger.info("Saved short record: {}", filename)
+        return "Saved short record"
+
+    except Exception as e:
+        logger.exception("{} Rais general Error", e)
+        return "Error making short record"
 
 
 def count_occurrences(username: str, content: bytes):
@@ -142,9 +164,39 @@ def count_occurrences(username: str, content: bytes):
         return "Error saving record"
 
 
-def save_record(data):
-    # Your logic for saving record here
-    pass
+def save_record(sound_name: str, username: str, state, content, DB):
+    logger.info("Got packet: {}, {}", username, state)
+    try:
+        if username not in file_short_record:
+            file_short_record[username] = None
+        if file_short_record[username]:
+            file_short_record[username] += content
+        else:
+            file_short_record[username] = content
+
+        if state == "1":
+            file_short_record[username] += content
+            filename = "_" + username + "_" + sound_name + "_saved_Short.ogg"
+            with open(filename, "wb") as file:
+                file.write(file_short_record[username])
+            file_short_record[username] = None
+            DB.insert_data_to_sounds_table(username, sound_name, filename)
+            logger.info("Saved file: {}", filename)
+
+            return "Saved file"
+        return "Got file part"
+    except Exception as e:
+        logger.exception("{} Rais general Error", e)
+        return "Error saving record"
+
+
+def RetrunSoundNames(username: str, DB):
+    sounds = DB.check_user_sounds(username)
+    to_send = ""
+    for x in range(len(sounds) - 1):
+        to_send += sounds[x] + "~"
+    to_send += sounds[-1]
+    return to_send
 
 
 def handle_request(request_code, data, DB):
@@ -164,17 +216,29 @@ def handle_request(request_code, data, DB):
                 to_send = sign_up_user(
                     request_code.split("~")[1], request_code.split("~")[2], DB
                 )
-            case "ShortRecord":
+            case "ShortRecordSave":
                 to_send = save_short_record(
                     request_code.split("~")[1], request_code.split("~")[2], data
                 )  # name,state,data
+            case "ShortRecordExist":
+                to_send = make_short_record(
+                    request_code.split("~")[1], request_code.split("~")[2], DB
+                )  # name,Sound name, database
             case "LongRecord":
                 to_send = count_occurrences(
                     request_code.split("~")[1],
                     data,
                 )
             case "SaveRecord":
-                to_send = save_record(data.split("~")[1])
+                to_send = save_record(
+                    request_code.split("~")[1],
+                    request_code.split("~")[2],
+                    request_code.split("~")[3],
+                    data,
+                    DB,
+                )  # file name, username,state,data
+            case "GetSoundsNames":
+                to_send = RetrunSoundNames(request_code.split("~")[1], DB)
             case _:
                 logger.info("unidentified code: {}", request_code)
                 to_send = "unidentified code"
@@ -188,6 +252,7 @@ async def on_new_client(client_socket: socket, addr):
     """Handles communication with a single client."""
     is_login = False
     db = DBHelper.DBHelper()
+    db.create_table()
     loop = asyncio.get_event_loop()
     await prepare_hybrid_encryption(client_socket, addr, loop)
     while True:
@@ -202,7 +267,6 @@ async def on_new_client(client_socket: socket, addr):
 
             size_to_decode = int(data[0])
 
-            logger.info(str(size_to_decode))
             request_code = data[1 : size_to_decode + 1].decode("utf-8")
             data = data[size_to_decode + 1 :]
 
