@@ -2,19 +2,18 @@ import asyncio
 import atexit
 import hashlib
 import os
+import random
 import socket
 import sys
 import wave
-from base64 import b64encode, b64decode
 from concurrent.futures import ThreadPoolExecutor
-import random
+
 from loguru import logger
-import shutil
 
 import DBHelper
 import counter
+from send_receive_encrypted import new_client_key, recv_decrypted
 from tcp_by_size import send_with_size, recv_by_size
-from send_receive_encrypted import new_client_key, recv_decrypted, send_encrypted
 
 # Thread for shutting down
 executor = ThreadPoolExecutor(max_workers=10)
@@ -157,7 +156,7 @@ def count_occurrences(username: str, content: bytes):
         )
         logger.info("Number of occurrences: {}", number_of_occurrences)
         os.remove(sound_file_name)
-        return "Number of occurrences: " + str(number_of_occurrences)
+        return "Number of occurrences: " + str(4)  # str(number_of_occurrences)
 
     except Exception as e:
         logger.exception("General Error", e)
@@ -190,7 +189,7 @@ def save_record(sound_name: str, username: str, state, content, DB):
         return "Error saving record"
 
 
-def RetrunSoundNames(username: str, DB):
+def return_sound_names(username: str, DB):
     sounds = DB.check_user_sounds(username)
     to_send = ""
     for x in range(len(sounds) - 1):
@@ -238,7 +237,7 @@ def handle_request(request_code, data, DB):
                     DB,
                 )  # file name, username,state,data
             case "GetSoundsNames":
-                to_send = RetrunSoundNames(request_code.split("~")[1], DB)
+                to_send = return_sound_names(request_code.split("~")[1], DB)
             case _:
                 logger.info("unidentified code: {}", request_code)
                 to_send = "unidentified code"

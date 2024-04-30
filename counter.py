@@ -40,9 +40,6 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
             if similarity_score >= similarity_threshold:
                 count += 1
 
-        # Print the total number of occurrences
-        # print("Number of occurrences:", count)
-
         # Return the total number of occurrences
         return count
 
@@ -193,21 +190,17 @@ def record_with_key_stop(key_to_stop):
 def record_sound(path):
     """Records from the microphone and outputs the resulting data to 'path'"""
     sample_width, data = record()
-    data = pack("<" + ("h" * len(data)), *data)
-
-    wf = wave.open(path, "wb")
-    wf.setnchannels(1)
-    wf.setsampwidth(sample_width)
-    wf.setframerate(RATE)
-    wf.writeframes(data)
-    wf.close()
+    record_to(data, path, sample_width)
 
 
 def record_to_file(path, key_to_stop):
     """Records from the microphone and outputs the resulting data to 'path'"""
     sample_width, data = record_with_key_stop(key_to_stop)
-    data = pack("<" + ("h" * len(data)), *data)
+    record_to(data, path, sample_width)
 
+
+def record_to(data, path, sample_width):
+    data = pack("<" + ("h" * len(data)), *data)
     wf = wave.open(path, "wb")
     wf.setnchannels(1)
     wf.setsampwidth(sample_width)

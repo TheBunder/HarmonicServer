@@ -1,10 +1,7 @@
+import hashlib
 import logging
 import sqlite3
-import os
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-import hashlib, uuid
+import uuid
 
 
 class DBHelper:
@@ -18,9 +15,6 @@ class DBHelper:
     COLUMN_USERNAME = "username"
     COLUMN_SOUND_NAME = "sound_name"
     COLUMN_FILE_NAME = "file_name"
-
-    ITERATION_COUNT = 1024  # Adjust as needed
-    KEY_LENGTH = 256  # Adjust as needed
 
     def __init__(self, db_name="Login.db"):
         self.connection = sqlite3.connect(db_name)
@@ -93,7 +87,6 @@ class DBHelper:
         return False
 
     def check_user_sounds(self, username):
-        """Checks if the username and password match an existing user."""
         query = f"SELECT sounds.sound_name FROM sounds JOIN users ON sounds.userid = users.username WHERE users.username = ?;"
         # Using parameterized query to avoid SQL injection
         self.cursor.execute(query, (username,))
