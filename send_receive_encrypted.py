@@ -11,11 +11,6 @@ def new_client_key(client_addr, aes_key, iv):
     print(CLIENTS_AES_INFO)
 
 
-def del_client_info(client_addr):
-    global CLIENTS_AES_INFO
-    CLIENTS_AES_INFO.pop(client_addr)
-
-
 def send_encrypted(sock, client_addr, to_send, loop):
     encrypt_cipher = AES.new(
         CLIENTS_AES_INFO[client_addr][0], AES.MODE_CBC, CLIENTS_AES_INFO[client_addr][1]

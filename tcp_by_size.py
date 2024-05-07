@@ -7,8 +7,6 @@ import asyncio
 
 SIZE_HEADER_FORMAT = "000000000|"  # n digits for data size + one delimiter
 size_header_size = len(SIZE_HEADER_FORMAT)
-TCP_DEBUG = True
-LEN_TO_PRINT = 100
 
 
 async def recv_by_size(sock, loop: asyncio.AbstractEventLoop):
@@ -30,10 +28,6 @@ async def recv_by_size(sock, loop: asyncio.AbstractEventLoop):
                 break
             data += _d
 
-    if TCP_DEBUG and size_header != b"":
-        # print ("\nRecv(%s)>>>" % (size_header,), end='')
-        # print ("%s"%(data[:min(len(data),LEN_TO_PRINT)],))
-        pass
     if data_len != len(data):
         data = b""  # Partial data is like no data !
     return data
@@ -48,7 +42,3 @@ async def send_with_size(sock, bdata, loop: asyncio.AbstractEventLoop):
     bytea = bytearray(header_data, encoding="utf8") + bdata
 
     await loop.sock_sendall(sock, bytea)
-    if TCP_DEBUG and len_data > 0:
-        # print ("\nSent(%s)>>>" % (len_data,), end='')
-        # print ("%s"%(bytea[:min(len(bytea),LEN_TO_PRINT)],))
-        pass

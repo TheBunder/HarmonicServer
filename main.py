@@ -7,6 +7,7 @@ import socket
 import sys
 import wave
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 from loguru import logger
 
@@ -65,9 +66,15 @@ async def prepare_hybrid_encryption(sock, client_addr, loop):
     new_client_key(client_addr, secret_key, iv)
 
 
-def login_user(username, password, DB):
+def login_user(username, password, DB, login_timeout_task):
+    """
+    log in user into DB
+    and return success or failure type
+    """
     if DB.check_username_password(username, password):
         logger.info("Username and password match: {}, {}", username, password)
+        # If client logged in, cancel the login timeout task
+        login_timeout_task.cancel()
         return "Username and password match"
     else:
         logger.info("Username and password do not match: {}, {}", username, password)
@@ -75,6 +82,9 @@ def login_user(username, password, DB):
 
 
 def sign_up_user(username, password, DB):
+    """
+    sign up user into DB
+    """
     if DB.check_username(username):
         logger.info("Username is in use: {}", username)
         return "Username is in use"
@@ -88,16 +98,19 @@ def sign_up_user(username, password, DB):
 
 
 def save_short_record(username: str, state, content):
+    """
+    save sound to single use
+    """
     logger.info("Got packet: {}, {}", username, state)
     try:
-        if username not in file_short_record:
+        if username not in file_short_record:  # place all the bytes at the same place
             file_short_record[username] = None
         if file_short_record[username]:
             file_short_record[username] += content
         else:
             file_short_record[username] = content
 
-        if state == "1":
+        if state == "1":  # check if it is the last part
             file_short_record[username] += content
             filename = username + "_short.ogg"
             with open(filename, "wb") as file:
@@ -112,11 +125,14 @@ def save_short_record(username: str, state, content):
 
 
 def make_short_record(username: str, sound_name, DB):
+    """
+    convert the saved files into a short record format
+    """
     logger.info("Got packet: {}, {}", username, sound_name)
     try:
         exist_file = DB.get_file_name_from_sound(sound_name)
         filename = username + "_short.ogg"
-        with open(exist_file, "rb") as f_src:
+        with open(exist_file, "rb") as f_src:  # copy sound into correct format
             with open(filename, "wb") as f_dest:
                 # Copy the contents of the original file to the new file
                 while True:
@@ -133,11 +149,14 @@ def make_short_record(username: str, sound_name, DB):
 
 
 def count_occurrences(username: str, content: bytes):
+    """
+    count the number of occurrences of the short sound in the long recording
+    """
     logger.info("Got packet: {}", username)
     try:
         filename = username + "_long.wav"
 
-        with wave.open(filename, mode="wb") as wav_file:
+        with wave.open(filename, mode="wb") as wav_file:  # creat sound gile
             wav_file.setnchannels(1)
             wav_file.setsampwidth(1)
             wav_file.setframerate(FRAMES_PER_SECOND)
@@ -164,19 +183,22 @@ def count_occurrences(username: str, content: bytes):
 
 
 def save_record(sound_name: str, username: str, state, content, DB):
+    """
+    save user sound record for future use
+    """
     logger.info("Got packet: {}, {}", username, state)
     try:
-        if username not in file_short_record:
+        if username not in file_short_record:  # place all the bytes at the same place
             file_short_record[username] = None
         if file_short_record[username]:
             file_short_record[username] += content
         else:
             file_short_record[username] = content
 
-        if state == "1":
+        if state == "1":  # check if it is the last part
             file_short_record[username] += content
             filename = "_" + username + "_" + sound_name + "_saved_Short.ogg"
-            with open(filename, "wb") as file:
+            with open(filename, "wb") as file:  # write into file
                 file.write(file_short_record[username])
             file_short_record[username] = None
             DB.insert_data_to_sounds_table(username, sound_name, filename)
@@ -190,15 +212,19 @@ def save_record(sound_name: str, username: str, state, content, DB):
 
 
 def return_sound_names(username: str, DB):
+    """
+    Return user's sound names
+    """
     sounds = DB.check_user_sounds(username)
     to_send = ""
+    # turns all the names into ont string
     for x in range(len(sounds) - 1):
         to_send += sounds[x] + "~"
     to_send += sounds[-1]
     return to_send
 
 
-def handle_request(request_code, data, DB):
+def handle_request(request_code, data, DB, login_timeout_task):
     """
     Handle client request
     string :return: return message to send to client
@@ -209,7 +235,10 @@ def handle_request(request_code, data, DB):
         match code:
             case "Login":
                 to_send = login_user(
-                    request_code.split("~")[1], request_code.split("~")[2], DB
+                    request_code.split("~")[1],
+                    request_code.split("~")[2],
+                    DB,
+                    login_timeout_task,
                 )
             case "SignUp":
                 to_send = sign_up_user(
@@ -254,6 +283,8 @@ async def on_new_client(client_socket: socket, addr):
     db.create_table()
     loop = asyncio.get_event_loop()
     await prepare_hybrid_encryption(client_socket, addr, loop)
+    # Start login timeout task
+    login_timeout_task = asyncio.create_task(login_timeout(client_socket))
     while True:
         try:
             if not is_login:
@@ -270,7 +301,7 @@ async def on_new_client(client_socket: socket, addr):
             data = data[size_to_decode + 1 :]
 
             logger.info("{} >> {}", addr, request_code)
-            data = handle_request(request_code, data, db)
+            data = handle_request(request_code, data, db, login_timeout_task)
             if data == "Username and password match":
                 is_login = True
             await send_with_size(
@@ -283,6 +314,16 @@ async def on_new_client(client_socket: socket, addr):
             logger.exception("{} Rais general Error", addr, e)
 
     logger.info("{}  Exited", addr)
+    client_socket.close()
+
+
+async def login_timeout(client_socket):
+    try:
+        await asyncio.sleep(300)
+    except asyncio.CancelledError:
+        # Task was cancelled
+        return
+    # If the client hasn't logged in within 5 minutes, cancel the client socket
     client_socket.close()
 
 
