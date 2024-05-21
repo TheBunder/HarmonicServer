@@ -5,7 +5,6 @@ import uuid
 
 
 class DBHelper:
-
     TABLE_NAME_USERS = "users"
     COLUMN_USERNAME = "username"
     COLUMN_PASSWORD = "password"
@@ -96,11 +95,11 @@ class DBHelper:
         sound_names = [row[0] for row in rows]
         return sound_names
 
-    def get_file_name_from_sound(self, sound_name):
+    def get_file_name_from_sound(self, sound_name, username):
         """Get the file name associated with a sound name."""
-        query = "SELECT file_name FROM sounds WHERE sound_name = ?;"
+        query = "SELECT file_name FROM sounds WHERE sound_name = ? AND userid= ?"
         # Using parameterized query to avoid SQL injection
-        self.cursor.execute(query, (sound_name,))
+        self.cursor.execute(query, (sound_name, username))
         result = self.cursor.fetchone()
         if result:
             return result[0]  # Returning the file name

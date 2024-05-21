@@ -156,7 +156,7 @@ def count_occurrences(username: str, content: bytes):
     try:
         filename = username + "_long.wav"
 
-        with wave.open(filename, mode="wb") as wav_file:  # creat sound gile
+        with wave.open(filename, mode="wb") as wav_file:  # creat sound file
             wav_file.setnchannels(1)
             wav_file.setsampwidth(1)
             wav_file.setframerate(FRAMES_PER_SECOND)
@@ -174,8 +174,8 @@ def count_occurrences(username: str, content: bytes):
             similarity_threshold,
         )
         logger.info("Number of occurrences: {}", number_of_occurrences)
-        os.remove(sound_file_name)
-        return "Number of occurrences: " + str(4)  # str(number_of_occurrences)
+        #os.remove(sound_file_name)
+        return "Number of occurrences: " + str(number_of_occurrences)  #str(4)
 
     except Exception as e:
         logger.exception("General Error", e)
@@ -216,12 +216,8 @@ def return_sound_names(username: str, DB):
     Return user's sound names
     """
     sounds = DB.check_user_sounds(username)
-    to_send = ""
-    # turns all the names into ont string
-    for x in range(len(sounds) - 1):
-        to_send += sounds[x] + "~"
-    to_send += sounds[-1]
-    return to_send
+    # turns all the names into one string
+    return '~'.join(sounds)
 
 
 def handle_request(request_code, data, DB, login_timeout_task):
@@ -229,7 +225,6 @@ def handle_request(request_code, data, DB, login_timeout_task):
     Handle client request
     string :return: return message to send to client
     """
-    to_send = " "
     try:
         code = request_code.split("~")[0]
         match code:
@@ -268,7 +263,7 @@ def handle_request(request_code, data, DB, login_timeout_task):
             case "GetSoundsNames":
                 to_send = return_sound_names(request_code.split("~")[1], DB)
             case _:
-                logger.info("unidentified code: {}", request_code)
+                logger.exception("unidentified code: {}", request_code)
                 to_send = "unidentified code"
         return to_send
     except Exception as err:
@@ -297,8 +292,8 @@ async def on_new_client(client_socket: socket, addr):
 
             size_to_decode = int(data[0])
 
-            request_code = data[1 : size_to_decode + 1].decode("utf-8")
-            data = data[size_to_decode + 1 :]
+            request_code = data[1: size_to_decode + 1].decode("utf-8")
+            data = data[size_to_decode + 1:]
 
             logger.info("{} >> {}", addr, request_code)
             data = handle_request(request_code, data, db, login_timeout_task)
@@ -333,7 +328,7 @@ async def main():
     port = 2525
 
     with socket.socket(
-        socket.AF_INET, socket.SOCK_STREAM
+            socket.AF_INET, socket.SOCK_STREAM
     ) as s:  # Use a context manager to ensure socket closure
         s.bind((host, port))
         s.listen(5)
@@ -357,7 +352,7 @@ if __name__ == "__main__":
     logger.add(
         sys.stdout,
         format="<light-blue>{time}</> <lvl>{level: <5}</lvl> [<yellow>{thread.name}</>] [<light-blue>{file}.{"
-        "function}:{line}</>] {message}",
+               "function}:{line}</>] {message}",
     )
     logger.add("debug.log")
     atexit.register(on_exit)

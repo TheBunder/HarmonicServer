@@ -403,6 +403,85 @@ files = [
 ]
 
 [[package]]
+name = "dtaidistance"
+version = "2.3.11"
+description = "Distance measures for time series (Dynamic Time Warping, fast C implementation)"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "dtaidistance-2.3.11-cp310-cp310-macosx_11_0_x86_64.whl", hash = "sha256:ae49e46a84b8ab5563b13871cdb6fa78fe05991ab11a15dde36939f5463a4ca0"},
+    {file = "dtaidistance-2.3.11-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f489bcf5776303b52207807eb173bff11b8b5e7a355830c6fd80be36f007fd8b"},
+    {file = "dtaidistance-2.3.11-cp310-cp310-win_amd64.whl", hash = "sha256:32bf75498fec2e89de294309698ab6e4a420a21bb030628b04e5b124648c2a66"},
+    {file = "dtaidistance-2.3.11-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:bbb15caee33f175c37346fa303cfb66ad1ae1bfcc6192840ba8b8b7f75c71937"},
+    {file = "dtaidistance-2.3.11-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d84e738ab3ce12f912554dc5777232547443fbd1005d53a2309726f7525c9ead"},
+    {file = "dtaidistance-2.3.11-cp38-cp38-macosx_11_0_x86_64.whl", hash = "sha256:06fa79fed8430e243859afa13c80b5c6e323d962cf4fd17c7c34da91edb79b71"},
+    {file = "dtaidistance-2.3.11-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ed866da77b2377c5820350d767fd7d8097a84701d43c23e66b7e255bd6833c90"},
+    {file = "dtaidistance-2.3.11-cp38-cp38-win_amd64.whl", hash = "sha256:e1011080168078e80952c96003629ce8048dc5d451801a1d38012ee09ae90fd8"},
+    {file = "dtaidistance-2.3.11-cp39-cp39-macosx_11_0_x86_64.whl", hash = "sha256:6deec549e9aa14cc222d9eb73811b291ea4501183db6d1ee8476dc2a2234b989"},
+    {file = "dtaidistance-2.3.11-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:44f6934f7458b97411c958238806db853c246f6a0e8e056f0a412ae879921533"},
+    {file = "dtaidistance-2.3.11-cp39-cp39-win_amd64.whl", hash = "sha256:b7b056399c31aa2d27228fc995c2a3b52425e1c5f69a6fcb03a23556cdd0870f"},
+    {file = "dtaidistance-2.3.11.tar.gz", hash = "sha256:a3e471dd1ed5b22eff3f5dd4b285e6df1ba5a28be3322f51eef9e6571ea7090b"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[package.extras]
+all = ["matplotlib (>=3.0.0)", "numpy", "scipy"]
+dev = ["matplotlib (>=3.0.0)", "numpy", "pytest", "pytest-benchmark", "scipy", "sphinx", "sphinx-rtd-theme"]
+numpy = ["numpy", "scipy"]
+vis = ["matplotlib (>=3.0.0)"]
+
+[[package]]
+name = "dtw"
+version = "1.4.0"
+description = "Python DTW Module"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dtw-1.4.0.tar.gz", hash = "sha256:6be2d561cbebede2550d877b32ea4b5c058dced6a846603d7881d214c29f88bc"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[[package]]
+name = "dtw-python"
+version = "1.4.2"
+description = "A comprehensive implementation of dynamic time warping (DTW) algorithms. DTW computes the optimal (least cumulative distance) alignment between points of two time series. Common DTW variants covered include local (slope) and global (window) constraints, subsequence matches, arbitrary distance definitions, normalizations, minimum variance matching, and so on. Provides cumulative distances, alignments, specialized plot styles, etc."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "dtw-python-1.4.2.tar.gz", hash = "sha256:69df1335a70ed6b8abe00b21c2dd79fcc0d56c21998520a275f566a787d05d50"},
+    {file = "dtw_python-1.4.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:327b8c08d4c2881dc02fab05a8bbbd0a895e6440c33306dda8aad2fc870497cb"},
+    {file = "dtw_python-1.4.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6a8ceca93a47aa39549e7b9dca7d37fa6c083c3ade32ec75da47b6b1481ae636"},
+    {file = "dtw_python-1.4.2-cp310-cp310-win_amd64.whl", hash = "sha256:cfebbf77a21e50c691967a8a2e07f2687d4ed5c05e2655f04e4df0be4efad021"},
+    {file = "dtw_python-1.4.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:b6ec09a27011eb620bdaa926e4969ff28245beac9db2ce5938eccf12b316e514"},
+    {file = "dtw_python-1.4.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c30c0f0da300d56ceac8bfbbe4b914e0364565a85af4b4dee4a562135e21461c"},
+    {file = "dtw_python-1.4.2-cp311-cp311-win_amd64.whl", hash = "sha256:a067d21ce2ecd2eb1a0d04587d03acb212cc68db64b955abfd7895db75e34fe1"},
+    {file = "dtw_python-1.4.2-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:5eb9e1a933deb17f068ec52b6d99dba472ba2fb7311e1fa31dc90fb526d07efa"},
+    {file = "dtw_python-1.4.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f146f222ba2be471b9968dd33e743f1b1f3903d9b529a478aaeb8c07b8f026fe"},
+    {file = "dtw_python-1.4.2-cp312-cp312-win_amd64.whl", hash = "sha256:8b48597e5a194fbe2dbdc5fac5d3cd8008c369975a73a1771dd1d5c036c7978a"},
+    {file = "dtw_python-1.4.2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:92ea7b346afb1792495e1ea1477785c01d11a7cf8cb252a1c5189a1c8d1936c8"},
+    {file = "dtw_python-1.4.2-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f8ef887727ff2940c218b9251ba66d6c2b6a58f41d59024bb83bc572fd3ef8db"},
+    {file = "dtw_python-1.4.2-cp36-cp36m-win_amd64.whl", hash = "sha256:a8181198d2dd6f8f4212ac290349be1d7bdf4cfbc38e9d5f42f540e74d5cb0f5"},
+    {file = "dtw_python-1.4.2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:5702a154c7f41b95ae2e2c9e76f4a19b8d51989a0116f81802de77b05ab0aee6"},
+    {file = "dtw_python-1.4.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:72cf20f8e55affb41ab8eb6221bb96450315bbf82fcc8593baea477d13e250ce"},
+    {file = "dtw_python-1.4.2-cp37-cp37m-win_amd64.whl", hash = "sha256:1c949e6d712cadcfb1c7f7e201dee2d022edb9df8063857cb5d013c2ed1738b0"},
+    {file = "dtw_python-1.4.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:4f3dca863cd3ae57ea6a04b2383512c050ace850e828f29dce561e9673517345"},
+    {file = "dtw_python-1.4.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:87a2ee836cb9f4ce33dbfc1a42f6b613330c54f5717d320155fedd5276ee5763"},
+    {file = "dtw_python-1.4.2-cp38-cp38-win_amd64.whl", hash = "sha256:b4bfadf599e0ced248391afb8b95c688d11f7807db3f57c1b7a7e9d72381d486"},
+    {file = "dtw_python-1.4.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:a9dba5ac327dd556181b2bb5a572e77d8efc296e12183e4ee488bc62a9b548de"},
+    {file = "dtw_python-1.4.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:77757c04af8398b450ff77b6f6568797980ffeda882a8f2a3d436945356ab070"},
+    {file = "dtw_python-1.4.2-cp39-cp39-win_amd64.whl", hash = "sha256:58fb6026ed616956b8f6ef02b32fcaf0a7e16653042862d5799ecce581431a92"},
+]
+
+[package.dependencies]
+numpy = ">=1.19"
+scipy = ">=1.1"
+
+[[package]]
 name = "fonttools"
 version = "4.51.0"
 description = "Tools to manipulate font files"
@@ -889,6 +968,27 @@ files = [
     {file = "mypy_extensions-1.0.0-py3-none-any.whl", hash = "sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d"},
     {file = "mypy_extensions-1.0.0.tar.gz", hash = "sha256:75dbf8955dc00442a438fc4d0666508a9a97b6bd41aa2f0ffe9d2f2725af0782"},
 ]
+
+[[package]]
+name = "noisereduce"
+version = "3.0.2"
+description = "Noise reduction using Spectral Gating in Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "noisereduce-3.0.2-py3-none-any.whl", hash = "sha256:552552d148a147578c72532ee4ded253a3a4d12446f171e5bd19fdc8b10211aa"},
+    {file = "noisereduce-3.0.2.tar.gz", hash = "sha256:0a532d2223986e8295ae57a8f86fb4699a477636841237ffa8c323c959bd9c0b"},
+]
+
+[package.dependencies]
+librosa = "*"
+matplotlib = "*"
+numpy = "*"
+scipy = "*"
+tqdm = "*"
+
+[package.extras]
+pytorch = ["torch (>=1.9.0)"]
 
 [[package]]
 name = "numba"
@@ -1401,6 +1501,26 @@ files = [
 ]
 
 [[package]]
+name = "tqdm"
+version = "4.66.4"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tqdm-4.66.4-py3-none-any.whl", hash = "sha256:b75ca56b413b030bc3f00af51fd2c1a1a5eac6a0c1cca83cbb37a5c52abce644"},
+    {file = "tqdm-4.66.4.tar.gz", hash = "sha256:e4d936c9de8727928f3be6079590e97d9abfe8d39a590be678eb5919ffc186bb"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.11.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -1460,4 +1580,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "fcdf2884b6c5a1a36da211612970bacdd289241a31dda88e95a2020ac1e7be3c"
+content-hash = "910567c2b0d6fe99a1183911ff33bc1198c7343b11aedd898466d713a9610f23"

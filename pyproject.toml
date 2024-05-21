@@ -14,6 +14,10 @@ cryptography = "^42.0.5"
 librosa = "^0.10.1"
 matplotlib = "^3.8.4"
 pycryptodome = "^3.20.0"
+dtw = "^1.4.0"
+dtw-python = "^1.4.2"
+dtaidistance = "^2.3.11"
+noisereduce = "^3.0.2"
 
 
 [build-system]
