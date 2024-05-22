@@ -23,9 +23,9 @@ executor = ThreadPoolExecutor(max_workers=10)
 file_short_record = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
-FRAMES_PER_SECOND = 44100
+FRAMES_PER_SECOND = 48000
 SIZE_TO_CHECK = 40000
-similarity_threshold = 0.7
+similarity_threshold = 0.32
 
 # variables for the encryption
 p_str = "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A63A3620FFFFFFFFFFFFFFFF"
@@ -72,12 +72,12 @@ def login_user(username, password, DB, login_timeout_task):
     and return success or failure type
     """
     if DB.check_username_password(username, password):
-        logger.info("Username and password match: {}, {}", username, password)
+        logger.info("User {} connected", username)
         # If client logged in, cancel the login timeout task
         login_timeout_task.cancel()
         return "Username and password match"
     else:
-        logger.info("Username and password do not match: {}, {}", username, password)
+        logger.info("Invalid login attempt for user {}", username)
         return "Username and password do not match"
 
 
@@ -116,11 +116,11 @@ def save_short_record(username: str, state, content):
             with open(filename, "wb") as file:
                 file.write(file_short_record[username])
             file_short_record[username] = None
-            logger.info("Saved short record: {}", filename)
+            logger.info("Saved short record: {}", os.path.abspath(filename))
             return "Saved short record"
         return "Got short record"
     except Exception as e:
-        logger.exception("{} Rais general Error", e)
+        logger.exception("Error saving short record", e)
         return "Error saving record"
 
 
@@ -295,7 +295,7 @@ async def on_new_client(client_socket: socket, addr):
             request_code = data[1: size_to_decode + 1].decode("utf-8")
             data = data[size_to_decode + 1:]
 
-            logger.info("{} >> {}", addr, request_code)
+            logger.trace("{} >> {}", addr, request_code)
             data = handle_request(request_code, data, db, login_timeout_task)
             if data == "Username and password match":
                 is_login = True

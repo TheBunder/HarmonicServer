@@ -12,11 +12,9 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
             "Target audio path: {}", target_audio_path
         )  # Log the target audio path
         logger.info("Recording path: {}", recording_path)  # Log the recording path
-        target_audio, target_audio_sr = librosa.load(target_audio_path)  # Load the target audio file
+        target_audio, target_audio_sr = librosa.load(target_audio_path, sr=None)  # Load the target audio file
         reduced_noise_sound = nr.reduce_noise(y=target_audio, sr=int(target_audio_sr))
-        recorded_audio, recorded_audio_sr = librosa.load(
-            recording_path
-        )  # Load the recording audio file
+        recorded_audio, recorded_audio_sr = librosa.load(recording_path, sr=None)  # Load the recording audio file
         reduced_noise_recorded = nr.reduce_noise(y=recorded_audio, sr=int(recorded_audio_sr))
         # Initialize a count variable to track the number of occurrences
         count = 0
@@ -45,11 +43,11 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
 
 
 def main():
-    sound_path = "demo_sound_ogg.ogg"
-    recording_path = "us9349_process_long.wav"
+    sound_path = "us_short.ogg"
+    recording_path = "us1259_process_long.wav"
     print(
         "number of acourences: "
-        + str(count_similar_sounds(sound_path, recording_path, 0.75))
+        + str(count_similar_sounds(sound_path, recording_path, 0.27))
     )
 
 
