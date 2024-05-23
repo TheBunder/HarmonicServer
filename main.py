@@ -112,7 +112,7 @@ def save_short_record(username: str, state, content):
 
         if state == "1":  # check if it is the last part
             file_short_record[username] += content
-            filename = username + "_short.ogg"
+            filename = username + "_short.wav"
             with open(filename, "wb") as file:
                 file.write(file_short_record[username])
             file_short_record[username] = None
@@ -131,7 +131,7 @@ def make_short_record(username: str, sound_name, DB):
     logger.info("Got packet: {}, {}", username, sound_name)
     try:
         exist_file = DB.get_file_name_from_sound(sound_name)
-        filename = username + "_short.ogg"
+        filename = username + "_short.wav"
         with open(exist_file, "rb") as f_src:  # copy sound into correct format
             with open(filename, "wb") as f_dest:
                 # Copy the contents of the original file to the new file
@@ -169,7 +169,7 @@ def count_occurrences(username: str, content: bytes):
         # count occurrences
         logger.info("Sent to process")
         number_of_occurrences = counter.count_similar_sounds(
-            username + "_short.ogg",
+            username + "_short.wav",
             sound_file_name,
             similarity_threshold,
         )
@@ -197,7 +197,7 @@ def save_record(sound_name: str, username: str, state, content, DB):
 
         if state == "1":  # check if it is the last part
             file_short_record[username] += content
-            filename = "_" + username + "_" + sound_name + "_saved_Short.ogg"
+            filename = "_" + username + "_" + sound_name + "_saved_Short.wav"
             with open(filename, "wb") as file:  # write into file
                 file.write(file_short_record[username])
             file_short_record[username] = None
@@ -289,22 +289,27 @@ async def on_new_client(client_socket: socket, addr):
             if not data:
                 logger.info("{}  Client disconnected", addr)
                 break
+            if not data == b'message has invalid header':
+                size_to_decode = int(data[0])
 
-            size_to_decode = int(data[0])
+                request_code = data[1: size_to_decode + 1].decode("utf-8")
+                data = data[size_to_decode + 1:]
 
-            request_code = data[1: size_to_decode + 1].decode("utf-8")
-            data = data[size_to_decode + 1:]
-
-            logger.trace("{} >> {}", addr, request_code)
-            data = handle_request(request_code, data, db, login_timeout_task)
-            if data == "Username and password match":
-                is_login = True
+                logger.trace("{} >> {}", addr, request_code)
+                data = handle_request(request_code, data, db, login_timeout_task)
+                if data == "Username and password match":
+                    is_login = True
+            else:
+                logger.info("A message from {} was sent inappropriately", addr)
             await send_with_size(
                 client_socket, data.encode("utf-8"), loop
             )  # send data to the client
         except socket.error as e:
             logger.exception("{} Rais Socket Error", addr, e)
             break
+        except ValueError as e:
+            logger.exception("{} Rais Value Error", addr, e)# kick users that try to use the server without logging in
+            # break
         except Exception as e:
             logger.exception("{} Rais general Error", addr, e)
 

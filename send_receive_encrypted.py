@@ -22,7 +22,7 @@ def send_encrypted(sock, client_addr, to_send, loop):
 async def recv_decrypted(sock, client_addr, loop):
     decrypt_cipher = AES.new(
         CLIENTS_AES_INFO[client_addr][0], AES.MODE_CBC, CLIENTS_AES_INFO[client_addr][1]
-    )
+    )# will return a value error if a user try to use the server without signing up.
     received = await tcp_by_size.recv_by_size(sock, loop)
     if received == b"":
         return b""

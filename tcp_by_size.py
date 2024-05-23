@@ -20,13 +20,16 @@ async def recv_by_size(sock, loop: asyncio.AbstractEventLoop):
         size_header += _s
     data = b""
     if size_header != b"":
-        data_len = int(size_header[: size_header_size - 1])
-        while len(data) < data_len:
-            _d = await loop.sock_recv(sock, data_len - len(data))
-            if _d == b"":
-                data = b""
-                break
-            data += _d
+        try:
+            data_len = int(size_header[: size_header_size - 1])
+            while len(data) < data_len:
+                _d = await loop.sock_recv(sock, data_len - len(data))
+                if _d == b"":
+                    data = b""
+                    break
+                data += _d
+        except:
+            return b"message has invalid header"
 
     if data_len != len(data):
         data = b""  # Partial data is like no data !

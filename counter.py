@@ -43,8 +43,8 @@ def count_similar_sounds(target_audio_path, recording_path, similarity_threshold
 
 
 def main():
-    sound_path = "us_short.ogg"
-    recording_path = "us1259_process_long.wav"
+    sound_path = "Sound_copy.ogg"
+    recording_path = "demo_record.wav"
     print(
         "number of acourences: "
         + str(count_similar_sounds(sound_path, recording_path, 0.27))
