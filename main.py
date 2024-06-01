@@ -21,11 +21,12 @@ executor = ThreadPoolExecutor(max_workers=10)
 
 # Every user short file sound
 file_short_record = {}
+file_long_record = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
 FRAMES_PER_SECOND = 48000
 SIZE_TO_CHECK = 40000
-similarity_threshold = 0.32
+similarity_threshold = 0.55
 
 # variables for the encryption
 p_str = "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A63A3620FFFFFFFFFFFFFFFF"
@@ -182,6 +183,43 @@ def count_occurrences(username: str, content: bytes):
         return "Error saving record"
 
 
+def count_occurrences_py(username: str, state, content):
+    """
+    save sound to single use
+    """
+    logger.info("Got packet: {}, {}", username, state)
+    try:
+        if username not in file_long_record:  # place all the bytes at the same place
+            file_long_record[username] = None
+        if file_long_record[username]:
+            file_long_record[username] += content
+        else:
+            file_long_record[username] = content
+
+        if state == "1":  # check if it is the last part
+            file_long_record[username] += content
+            filename = username + "_long.wav"
+            with open(filename, "wb") as file:
+                file.write(file_long_record[username])
+            file_long_record[username] = None
+            logger.info("Saved long record: {}", os.path.abspath(filename))
+            sound_file_name = username + str(random.randint(0, 10000)) + "_process_long.wav"
+            os.rename(filename, sound_file_name)
+            # count occurrences
+            logger.info("Sent to process")
+            number_of_occurrences = counter.count_similar_sounds(
+                username + "_short.wav",
+                sound_file_name,
+                similarity_threshold,
+            )
+            logger.info("Number of occurrences: {}", number_of_occurrences)
+            # os.remove(sound_file_name)
+            return "Number of occurrences: " + str(number_of_occurrences)  # str(4)
+        return "Got long record"
+    except Exception as e:
+        logger.exception("Error saving short record", e)
+        return "Error saving record"
+
 def save_record(sound_name: str, username: str, state, content, DB):
     """
     save user sound record for future use
@@ -252,6 +290,11 @@ def handle_request(request_code, data, DB, login_timeout_task):
                     request_code.split("~")[1],
                     data,
                 )
+            case "LongRecordPy":
+                to_send = count_occurrences_py(
+                    request_code.split("~")[1], request_code.split("~")[2],
+                    data,
+                )  # name,state,data
             case "SaveRecord":
                 to_send = save_record(
                     request_code.split("~")[1],
