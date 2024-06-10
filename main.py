@@ -7,7 +7,6 @@ import socket
 import sys
 import wave
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
 
 from loguru import logger
 
@@ -15,6 +14,8 @@ import DBHelper
 import counter
 from send_receive_encrypted import new_client_key, recv_decrypted
 from tcp_by_size import send_with_size, recv_by_size
+
+import process
 
 # Thread for shutting down
 executor = ThreadPoolExecutor(max_workers=10)
@@ -113,10 +114,13 @@ def save_short_record(username: str, state, content):
 
         if state == "1":  # check if it is the last part
             file_short_record[username] += content
-            filename = username + "_short.wav"
+            detail_dir = os.path.join('.\\', username + '_sounds')
+            os.makedirs(detail_dir, exist_ok=True)
+            filename = os.path.join(detail_dir, username + "_short.wav")
             with open(filename, "wb") as file:
                 file.write(file_short_record[username])
             file_short_record[username] = None
+            process.analyze_sound(filename)
             logger.info("Saved short record: {}", os.path.abspath(filename))
             return "Saved short record"
         return "Got short record"
@@ -131,8 +135,10 @@ def make_short_record(username: str, sound_name, DB):
     """
     logger.info("Got packet: {}, {}", username, sound_name)
     try:
-        exist_file = DB.get_file_name_from_sound(sound_name)
-        filename = username + "_short.wav"
+        exist_file = DB.get_file_name_from_sound(sound_name, username)
+        detail_dir = os.path.join('.\\', username + '_sounds')
+        os.makedirs(detail_dir, exist_ok=True)
+        filename = os.path.join(detail_dir, username + "_short.wav")
         with open(exist_file, "rb") as f_src:  # copy sound into correct format
             with open(filename, "wb") as f_dest:
                 # Copy the contents of the original file to the new file
@@ -165,8 +171,10 @@ def count_occurrences(username: str, content: bytes):
 
         file_size = os.stat(filename).st_size
         logger.info("Wrote {} bytes to {}", file_size, filename)
+
         sound_file_name = username + str(random.randint(0, 10000)) + "_process_long.wav"
         os.rename(filename, sound_file_name)
+
         # count occurrences
         logger.info("Sent to process")
         number_of_occurrences = counter.count_similar_sounds(
@@ -175,8 +183,8 @@ def count_occurrences(username: str, content: bytes):
             similarity_threshold,
         )
         logger.info("Number of occurrences: {}", number_of_occurrences)
-        #os.remove(sound_file_name)
-        return "Number of occurrences: " + str(number_of_occurrences)  #str(4)
+        # os.remove(sound_file_name)
+        return "Number of occurrences: " + str(number_of_occurrences)  # str(4)
 
     except Exception as e:
         logger.exception("General Error", e)
@@ -197,28 +205,33 @@ def count_occurrences_py(username: str, state, content):
             file_long_record[username] = content
 
         if state == "1":  # check if it is the last part
-            file_long_record[username] += content
-            filename = username + "_long.wav"
+            detail_dir = os.path.join('.\\', username + '_sources')
+            os.makedirs(detail_dir, exist_ok=True)
+            filename = os.path.join(detail_dir, username + "_long.wav")
+
             with open(filename, "wb") as file:
                 file.write(file_long_record[username])
+
             file_long_record[username] = None
             logger.info("Saved long record: {}", os.path.abspath(filename))
-            sound_file_name = username + str(random.randint(0, 10000)) + "_process_long.wav"
+
+            sound_file_name = os.path.join(detail_dir, username + str(random.randint(0, 10000)) + "_process_long.wav")
             os.rename(filename, sound_file_name)
+
             # count occurrences
             logger.info("Sent to process")
-            number_of_occurrences = counter.count_similar_sounds(
-                username + "_short.wav",
+            number_of_occurrences = process.counter(
                 sound_file_name,
-                similarity_threshold,
+                os.path.join('.\\', username + '_sounds', username + "_short.wav")
             )
             logger.info("Number of occurrences: {}", number_of_occurrences)
             # os.remove(sound_file_name)
             return "Number of occurrences: " + str(number_of_occurrences)  # str(4)
         return "Got long record"
     except Exception as e:
-        logger.exception("Error saving short record", e)
+        logger.exception("Error saving long record", e)
         return "Error saving record"
+
 
 def save_record(sound_name: str, username: str, state, content, DB):
     """
@@ -351,8 +364,8 @@ async def on_new_client(client_socket: socket, addr):
             logger.exception("{} Rais Socket Error", addr, e)
             break
         except ValueError as e:
-            logger.exception("{} Rais Value Error", addr, e)# kick users that try to use the server without logging in
-            # break
+            logger.exception("{} Rais Value Error", addr, e)  # kick users that try to use the server without logging in
+            break
         except Exception as e:
             logger.exception("{} Rais general Error", addr, e)
 

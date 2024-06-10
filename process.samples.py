@@ -15,98 +15,9 @@ import scipy
 import scipy.signal
 from librosa import ParameterError
 
-# --------------------------------------------------
-
-# ffmpeg_path = 'ffmpeg'  # On Windows, you will probably need this to be \path\to\ffmpeg.exe
-
-# if len(sys.argv) > 4:
-# samples_folder = r"samples\"
-source_path = "source.wav"
-# sample_number = "1"
-# else:
-#     print('Missing arguments')
-#     sys.exit()
-
-# if len(sys.argv) >= 6:
-#     source_length = sys.argv[4]
-#     source_timestamp = sys.argv[5]
-# else:
-source_length = None
-source_timestamp = None
-
-source_path_split = os.path.splitext(source_path)
-# sample_path = os.path.join(samples_folder, sample_number + source_path_split[1])
-sample_path = r"samples\us_short.wav"
-sample_path_split = os.path.split(sample_path)
-sample_ext_split = os.path.splitext(sample_path_split[1])
 
 # --------------------------------------------------
-
-# if source_timestamp:
-#     print(source_timestamp)
-#     subprocess.call(
-#         [ffmpeg_path, '-ss', source_timestamp, '-t', source_length, '-i', source_path, '-acodec', 'copy', '-y',
-#          sample_path])
-
-# --------------------------------------------------
-
-# f = open(os.path.join(sample_path_split[0], 'info', sample_ext_split[0] + '.txt'), 'w')
-# f.write('source: ' + source_path + '\n')
-# f.write('timestamp: ' + source_timestamp + '\n')
-# f.write('length_seconds: ' + source_length + '\n')
-# f.close()
-
-# --------------------------------------------------
-
-samples_script = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'process.samples.py')
-
-# subprocess.call(['python', samples_script, samples_folder])
-
-# --------------------------------------------------
-
-filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'process.source.py')
-
-# --------------------------------------------------
-
-# np.set_printoptions(threshold=np.nan)
-
-# ffmpeg_path = 'ffmpeg'  # On Windows, you will probably need this to be \path\to\ffmpeg.exe
-
-dtype = np.complex64
-n_fft = 2048
-hz_count = int(1 + n_fft // 2)  # 1025 (Hz buckets)
-win_length = n_fft
-hop_length = int(win_length // 4)
-sample_rate = 22050
-sample_crop_start = 5  # The first 4 seem to get damaged
-sample_crop_end = 4
-sample_warn_allowance = 3
-
-match_any_sample = True
-
-
-# --------------------------------------------------
-
-# def pcm_data(path, sample_rate):
-#     devnull = open(os.devnull)
-#     proc = subprocess.Popen([ffmpeg_path, '-i', path, '-f', 's16le', '-ac', '1', '-ar', str(sample_rate), '-'],
-#                             stdout=subprocess.PIPE, stderr=devnull)
-#     devnull.close()
-#
-#     scale = 1. / float(1 << ((8 * 2) - 1))
-#     y = scale * np.frombuffer(proc.stdout.read(), '<i2').astype(np.float32)
-#
-#     if y.size == 0:
-#         print('  Missing data from Audio file "{}" via "{}".'.format(path, ffmpeg_path))
-#         sys.exit()
-#
-#     return y
-
-
-# --------------------------------------------------
-
 def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
-    # --------------------------------------------------
     # Config
 
     window = 'hann'
@@ -168,14 +79,28 @@ def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
     return frames_data, fft_window, n_columns
 
 
-exec(open(filename).read())
+# --------------------------------------------------
+
+dtype = np.complex64
+n_fft = 2048
+hz_count = int(1 + n_fft // 2)  # 1025 (Hz buckets)
+win_length = n_fft
+hop_length = int(win_length // 4)
+sample_rate = 44100
+sample_crop_start = 5  # The first 4 seem to get damaged
+sample_crop_end = 4
+sample_warn_allowance = 3
+
+match_any_sample = True
+# --------------------------------------------------
+
+sample_path = r"samples\us_short.wav"
+sample_path_split = os.path.split(sample_path)
+sample_ext_split = os.path.splitext(sample_path_split[1])
 
 # --------------------------------------------------
 
 samples_folder = 'samples'
-
-# if len(sys.argv) == 2:
-#     samples_folder = sys.argv[1]
 
 if not os.path.exists(samples_folder):
     logger.info('Missing samples folder: ' + samples_folder)
@@ -210,16 +135,17 @@ for sample_path in files:
 logger.info(series_max_length)
 
 
-for sample_id, sample_info in enumerate(samples):
-
-    # --------------------------------------------------
+# for sample_id, sample_info in enumerate(samples):
+def analyze_sound(sample_path):
     # Config
 
-    sample_path = sample_info[0]
+    # sample_path = sample_info[0]
     sample_path_split = os.path.split(sample_path)
     sample_ext_split = os.path.splitext(sample_path_split[1])
 
-    series_data = sample_info[1]
+    # series_data = sample_info[1]
+    series_data = librosa.load(sample_path, sr=None)
+    series_max_length = series_data[0].shape[0]
 
     # --------------------------------------------------
     # Original frame length
@@ -330,6 +256,10 @@ for sample_id, sample_info in enumerate(samples):
 
     logger.info('{} ({}/{}) - {}'.format(sample_path, stft_crop_start, stft_crop_end, series_length))
 
-# --------------------------------------------------
 
-logger.info('Done')
+def main():
+    analyze_sound(r"samples\us_short.wav")
+
+
+if __name__ == '__main__':
+    main()
