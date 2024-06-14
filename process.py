@@ -284,7 +284,7 @@ def counter(source_path, matching_sample):
     for sample_path in files:
         if os.path.isfile(sample_path):
 
-            sample_series, sample_sr = librosa.load(sample_path, sr=None)
+            sample_series, sample_sr = librosa.load(sample_path, sr=None)  # load the sound from file
 
             sample_frames, fft_window, n_columns = stft_raw(sample_series, sample_sr, win_length, hop_length, hz_count,
                                                             dtype)
@@ -292,7 +292,7 @@ def counter(source_path, matching_sample):
             # Pre-allocate the STFT matrix
             sample_data = np.empty((int(1 + n_fft // 2), sample_frames.shape[1]), dtype=dtype, order='F')
 
-            for bl_s in range(0, sample_data.shape[1], n_columns):
+            for bl_s in range(0, sample_data.shape[1], n_columns):  # process the data
                 bl_t = min(bl_s + n_columns, sample_data.shape[1])
                 sample_data[:, bl_s:bl_t] = scipy.fft.fft(fft_window * sample_frames[:, bl_s:bl_t], axis=0)[
                                             :sample_data.shape[0]]
@@ -322,7 +322,7 @@ def counter(source_path, matching_sample):
                 sample_data
             ])
 
-            # logger.info('  {} ({}/{})'.format(sample_path, sample_start, sample_end))
+            logger.info('  {} ({}/{})'.format(sample_path, sample_start, sample_end))
 
     # --------------------------------------------------
     # Processing
@@ -334,9 +334,9 @@ def counter(source_path, matching_sample):
     if config['source_frame_end'] == None:
         config['source_frame_end'] = source_frames.shape[1]
 
-    # logger.info('From {} to {}'.format(config['source_frame_start'], config['source_frame_end']))
-    # logger.info('From {} to {}'.format(((float(config['source_frame_start']) * hop_length) / sample_rate),
-    #                                    ((float(config['source_frame_end']) * hop_length) / sample_rate)))
+    logger.info('From {} to {}'.format(config['source_frame_start'], config['source_frame_end']))
+    logger.info('From {} to {}'.format(((float(config['source_frame_start']) * hop_length) / sample_rate),
+                                       ((float(config['source_frame_end']) * hop_length) / sample_rate)))
 
     matching = {}
     match_count = 0
@@ -359,8 +359,8 @@ def counter(source_path, matching_sample):
 
         set_data = abs((scipy.fft.fft(fft_window * source_frames[:, block_start:block_end], axis=0)).astype(dtype))
 
-        # logger.info('{} to {} - {}'.format(block_start, block_end, str(datetime.timedelta(
-        #     seconds=((float(block_start) * hop_length) / sample_rate)))))
+        logger.info('{} to {} - {}'.format(block_start, block_end, str(datetime.timedelta(
+            seconds=((float(block_start) * hop_length) / sample_rate)))))
 
         x = 0
         x_max = (block_end - block_start)
@@ -383,9 +383,9 @@ def counter(source_path, matching_sample):
                     continue
 
                 hz_score = abs(set_data[0:hz_count, x] - samples[sample_id][3][0:hz_count, sample_x])
-                hz_score = sum(hz_score) / float(len(hz_score))
+                hz_score = sum(hz_score) / float(len(hz_score))  # calculate similarity
 
-                if hz_score < config['matching_min_score']:
+                if hz_score < config['matching_min_score']:  # Is it above or below the minimum to be count
 
                     if sample_x >= samples[sample_id][1]:
 
@@ -403,7 +403,7 @@ def counter(source_path, matching_sample):
                         else:
                             match_last_ignored = True
 
-                        matches.append([sample_id, match_start_time, match_last_ignored])
+                        matches.append([sample_id, match_start_time, match_last_ignored]) #Add the match to the list
                         match_last_time = match_start_time
 
                         if config['matching_skip']:
@@ -417,17 +417,23 @@ def counter(source_path, matching_sample):
 
                     else:
 
-                        # logger.info('Match {}/{}: Update to {} ({} < {})'.format(matching_id, sample_id, sample_x, hz_score,config['matching_min_score']))
+                        logger.info(
+                            'Match {}/{}: Update to {} ({} < {})'.format(matching_id, sample_id, sample_x, hz_score,
+                                                                         config['matching_min_score']))
                         matching[matching_id][1] = sample_x
 
                 elif matching[matching_id][2] < sample_warn_allowance and sample_x > 10:
 
-                    # logger.info('Match {}/{}: Warned at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x, samples[sample_id][1], hz_score,config['matching_min_score']))
+                    logger.info('Match {}/{}: Warned at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
+                                                                                   samples[sample_id][1], hz_score,
+                                                                                   config['matching_min_score']))
                     matching[matching_id][2] += 1
 
                 else:
 
-                    # logger.info('Match {}/{}: Failed at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,samples[sample_id][1], hz_score, config['matching_min_score']))
+                    logger.info('Match {}/{}: Failed at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
+                                                                                   samples[sample_id][1], hz_score,
+                                                                                   config['matching_min_score']))
                     results_end[sample_id][sample_x] += 1
                     del matching[matching_id]
 

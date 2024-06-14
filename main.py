@@ -26,7 +26,6 @@ file_long_record = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
 FRAMES_PER_SECOND = 48000
-SIZE_TO_CHECK = 40000
 similarity_threshold = 0.55
 
 # variables for the encryption
@@ -193,7 +192,7 @@ def count_occurrences(username: str, content: bytes):
 
 def count_occurrences_py(username: str, state, content):
     """
-    save sound to single use
+    count the number of occurrences of the short sound in the long recording
     """
     logger.info("Got packet: {}, {}", username, state)
     try:
