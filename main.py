@@ -212,10 +212,10 @@ def count_occurrences_py(username: str, state, content):
                 file.write(file_long_record[username])
 
             file_long_record[username] = None
-            logger.info("Saved long record: {}", os.path.abspath(filename))
 
             sound_file_name = os.path.join(detail_dir, username + str(random.randint(0, 10000)) + "_process_long.wav")
             os.rename(filename, sound_file_name)
+            logger.info("Saved long record: {}", os.path.abspath(sound_file_name))
 
             # count occurrences
             logger.info("Sent to process")

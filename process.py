@@ -1,7 +1,3 @@
-# --------------------------------------------------
-# Process STFT data as it's being parsed
-# https://librosa.github.io/librosa/_modules/librosa/core/spectrum.html#stft
-# --------------------------------------------------
 import datetime
 import os
 import re
@@ -15,8 +11,7 @@ from librosa import ParameterError
 from loguru import logger
 from matplotlib import pyplot as plt
 
-# I (Ben) copied the values from the process.samples.py
-# [CHECK WHY SAMPLE RATE 22050!]
+
 
 dtype = np.complex64
 n_fft = 2048
@@ -231,15 +226,17 @@ def analyze_sound(sample_path):
     # --------------------------------------------------
     # Done
 
-    logger.info('{} ({}/{}) - {}'.format(sample_path, stft_crop_start, stft_crop_end, series_length))
+    # logger.info('{} ({}/{}) - {}'.format(sample_path, stft_crop_start, stft_crop_end, series_length))
 
 
 def counter(source_path, matching_sample):
     config['source_path'] = source_path
     config['matching_samples'] = matching_sample
 
+    logger.info('Counting ' + str(config['matching_samples']) + ' in ' + str(config['source_path']))
+
     logger.info('Config')
-    logger.info('Hz Min Score: {}'.format(config['matching_min_score']))
+    # logger.info('Hz Min Score: {}'.format(config['matching_min_score']))
 
     cnt = 0
 
@@ -259,7 +256,7 @@ def counter(source_path, matching_sample):
 
     source_time_total = (float(len(source_series)) / source_sr)
 
-    logger.info('{} ({} & {})'.format(config['source_path'], source_time_total, source_sr))
+    # logger.info('{} ({} & {})'.format(config['source_path'], source_time_total, source_sr))
 
     # --------------------------------------------------
 
@@ -322,7 +319,7 @@ def counter(source_path, matching_sample):
                 sample_data
             ])
 
-            logger.info('  {} ({}/{})'.format(sample_path, sample_start, sample_end))
+            # logger.info('  {} ({}/{})'.format(sample_path, sample_start, sample_end))
 
     # --------------------------------------------------
     # Processing
@@ -334,9 +331,9 @@ def counter(source_path, matching_sample):
     if config['source_frame_end'] == None:
         config['source_frame_end'] = source_frames.shape[1]
 
-    logger.info('From {} to {}'.format(config['source_frame_start'], config['source_frame_end']))
-    logger.info('From {} to {}'.format(((float(config['source_frame_start']) * hop_length) / sample_rate),
-                                       ((float(config['source_frame_end']) * hop_length) / sample_rate)))
+    # logger.info('From {} to {}'.format(config['source_frame_start'], config['source_frame_end']))
+    # logger.info('From {} to {}'.format(((float(config['source_frame_start']) * hop_length) / sample_rate),
+    #                                    ((float(config['source_frame_end']) * hop_length) / sample_rate)))
 
     matching = {}
     match_count = 0
@@ -359,8 +356,8 @@ def counter(source_path, matching_sample):
 
         set_data = abs((scipy.fft.fft(fft_window * source_frames[:, block_start:block_end], axis=0)).astype(dtype))
 
-        logger.info('{} to {} - {}'.format(block_start, block_end, str(datetime.timedelta(
-            seconds=((float(block_start) * hop_length) / sample_rate)))))
+        # logger.info('{} to {} - {}'.format(block_start, block_end, str(datetime.timedelta(
+        #     seconds=((float(block_start) * hop_length) / sample_rate)))))
 
         x = 0
         x_max = (block_end - block_start)
@@ -417,23 +414,23 @@ def counter(source_path, matching_sample):
 
                     else:
 
-                        logger.info(
-                            'Match {}/{}: Update to {} ({} < {})'.format(matching_id, sample_id, sample_x, hz_score,
-                                                                         config['matching_min_score']))
+                        # logger.info(
+                        #     'Match {}/{}: Update to {} ({} < {})'.format(matching_id, sample_id, sample_x, hz_score,
+                        #                                                  config['matching_min_score']))
                         matching[matching_id][1] = sample_x
 
                 elif matching[matching_id][2] < sample_warn_allowance and sample_x > 10:
 
-                    logger.info('Match {}/{}: Warned at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
-                                                                                   samples[sample_id][1], hz_score,
-                                                                                   config['matching_min_score']))
+                    # logger.info('Match {}/{}: Warned at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
+                    #                                                                samples[sample_id][1], hz_score,
+                    #                                                                config['matching_min_score']))
                     matching[matching_id][2] += 1
 
                 else:
 
-                    logger.info('Match {}/{}: Failed at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
-                                                                                   samples[sample_id][1], hz_score,
-                                                                                   config['matching_min_score']))
+                    # logger.info('Match {}/{}: Failed at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
+                    #                                                                samples[sample_id][1], hz_score,
+                    #                                                                config['matching_min_score']))
                     results_end[sample_id][sample_x] += 1
                     del matching[matching_id]
 
@@ -445,7 +442,7 @@ def counter(source_path, matching_sample):
                     if match_any_sample or matching[matching_id][0] == matching_sample_id:
                         sample_id = matching[matching_id][0]
                         sample_x = matching[matching_id][1]
-                        logger.info('Match {}/{}: Duplicate Complete at {}'.format(matching_id, sample_id, sample_x))
+                        # logger.info('Match {}/{}: Duplicate Complete at {}'.format(matching_id, sample_id, sample_x))
                         results_dupe[sample_id][sample_x] += 1
                         del matching[
                             matching_id]  # Cannot be done in the first loop (next to continue), as the order in a dictionary is undefined, so you could have a match that started later, getting tested first.
