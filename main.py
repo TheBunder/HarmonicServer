@@ -12,17 +12,16 @@ from loguru import logger
 
 import DBHelper
 import counter
+import process
 from send_receive_encrypted import new_client_key, recv_decrypted
 from tcp_by_size import send_with_size, recv_by_size
-
-import process
 
 # Thread for shutting down
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Every user short file sound
-file_short_record = {}
-file_long_record = {}
+file_short_record:  dict = {}
+file_long_record: dict = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
 FRAMES_PER_SECOND = 48000

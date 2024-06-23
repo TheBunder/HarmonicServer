@@ -10,20 +10,19 @@ import scipy.signal
 from librosa import ParameterError
 from loguru import logger
 from matplotlib import pyplot as plt
+from typing import Final
 
+DTYPE = np.complex64
+N_FFT: Final[int] = 2048
+HZ_COUNT: Final[int] = int(1 + N_FFT // 2)  # 1025 (Hz buckets)
+WIN_LENGTH: Final[int] = N_FFT
+HOP_LENGTH: Final[int] = int(WIN_LENGTH // 4)
+SAMPLE_RATE: Final[int] = 44100
+# sample_crop_start = 5  # The first 4 seem to get damaged
+# sample_crop_end = 4
+SAMPLE_WARN_ALLOWANCE: Final[int] = 3
 
-
-dtype = np.complex64
-n_fft = 2048
-hz_count = int(1 + n_fft // 2)  # 1025 (Hz buckets)
-win_length = n_fft
-hop_length = int(win_length // 4)
-sample_rate = 44100
-sample_crop_start = 5  # The first 4 seem to get damaged
-sample_crop_end = 4
-sample_warn_allowance = 3
-
-match_any_sample = True
+MATCH_ANY_SAMPLE: Final[bool] = True
 
 
 # --------------------------------------------------
@@ -47,13 +46,13 @@ def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
 
     n = fft_window.shape[axis]
 
-    lpad = int((n_fft - n) // 2)
+    lpad = int((N_FFT - n) // 2)
 
     lengths = [(0, 0)] * fft_window.ndim
-    lengths[axis] = (lpad, int(n_fft - n - lpad))
+    lengths[axis] = (lpad, int(N_FFT - n - lpad))
 
     if lpad < 0:
-        raise ParameterError(('Target size ({:d}) must be at least input size ({:d})').format(n_fft, n))
+        raise ParameterError(('Target size ({:d}) must be at least input size ({:d})').format(N_FFT, n))
 
     fft_window = np.pad(fft_window, lengths, mode='constant')
 
@@ -65,17 +64,17 @@ def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
     # --------------------------------------------------
     # Pad the time series so that frames are centred
 
-    series = np.pad(series, int(n_fft // 2), mode=pad_mode)
+    series = np.pad(series, int(N_FFT // 2), mode=pad_mode)
 
     # --------------------------------------------------
     # Window the time series.
 
     # Compute the number of frames that will fit. The end may get truncated.
-    frame_count = 1 + int((len(series) - n_fft) / hop_length)  # Where n_fft = frame_length
+    frame_count = 1 + int((len(series) - N_FFT) / hop_length)  # Where n_fft = frame_length
 
     # Vertical stride is one sample
     # Horizontal stride is `hop_length` samples
-    frames_data = np.lib.stride_tricks.as_strided(series, shape=(n_fft, frame_count),
+    frames_data = np.lib.stride_tricks.as_strided(series, shape=(N_FFT, frame_count),
                                                   strides=(series.itemsize, hop_length * series.itemsize))
 
     # --------------------------------------------------
@@ -99,7 +98,7 @@ config = {
     'source_frame_end': None,  # (x * sample_rate) / hop_length)
 
     'matching_samples': os.path.join('samples', 'us_short.wav'),
-    'matching_min_score': 0.15,
+    'matching_min_score': 0.20,
     'matching_skip': 0,  # Jump forward X seconds after a match.
     'matching_ignore': 0,  # Ignore additional matches X seconds after the last one.
 
@@ -112,6 +111,9 @@ def analyze_sound(sample_path):
     # Config
 
     # sample_path = sample_info[0]
+    sample_crop_start = 5  # The first 4 seem to get damaged
+    sample_crop_end = 4
+
     sample_path_split = os.path.split(sample_path)
     sample_ext_split = os.path.splitext(sample_path_split[1])
 
@@ -122,7 +124,7 @@ def analyze_sound(sample_path):
     # --------------------------------------------------
     # Original frame length
 
-    stft_frames, fft_window, n_columns = stft_raw(series_data[0], sample_rate, win_length, hop_length, hz_count, dtype)
+    stft_frames, fft_window, n_columns = stft_raw(series_data[0], SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
 
     stft_length_source = stft_frames.shape[1]
 
@@ -142,10 +144,10 @@ def analyze_sound(sample_path):
     # --------------------------------------------------
     # STFT data
 
-    stft_frames, fft_window, n_columns = stft_raw(series_data[0], sample_rate, win_length, hop_length, hz_count, dtype)
+    stft_frames, fft_window, n_columns = stft_raw(series_data[0], SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
 
     # Pre-allocate the STFT matrix
-    stft_data = np.empty((int(1 + n_fft // 2), stft_frames.shape[1]), dtype=dtype, order='F')
+    stft_data = np.empty((int(1 + N_FFT // 2), stft_frames.shape[1]), dtype=DTYPE, order='F')
 
     for bl_s in range(0, stft_data.shape[1], n_columns):
         bl_t = min(bl_s + n_columns, stft_data.shape[1])
@@ -172,8 +174,8 @@ def analyze_sound(sample_path):
     stft_crop_start += sample_crop_start
     stft_crop_end = (stft_length_source - sample_crop_end)
 
-    stft_crop_start_time = ((float(stft_crop_start) * hop_length) / sample_rate)
-    stft_crop_end_time = ((float(stft_crop_end) * hop_length) / sample_rate)
+    stft_crop_start_time = ((float(stft_crop_start) * HOP_LENGTH) / SAMPLE_RATE)
+    stft_crop_end_time = ((float(stft_crop_end) * HOP_LENGTH) / SAMPLE_RATE)
 
     # --------------------------------------------------
     # Plot
@@ -181,14 +183,14 @@ def analyze_sound(sample_path):
     plt.figure(figsize=(5, 6))
 
     plt.subplot(2, 1, 1)
-    librosa.display.waveshow(series_harm, sr=sample_rate, alpha=0.25)
-    librosa.display.waveshow(series_perc, sr=sample_rate, color='r', alpha=0.5)
+    librosa.display.waveshow(series_harm, sr=SAMPLE_RATE, alpha=0.25)
+    librosa.display.waveshow(series_perc, sr=SAMPLE_RATE, color='r', alpha=0.5)
     plt.axvline(x=stft_crop_start_time)
     plt.axvline(x=stft_crop_end_time)
     plt.tight_layout()
 
     plt.subplot(2, 1, 2)
-    librosa.display.specshow(stft_data, sr=sample_rate, x_axis='time', y_axis='log', cmap='Reds')
+    librosa.display.specshow(stft_data, sr=SAMPLE_RATE, x_axis='time', y_axis='log', cmap='Reds')
     plt.axvline(x=stft_crop_start_time)
     plt.axvline(x=stft_crop_end_time)
     plt.tight_layout()
@@ -230,6 +232,9 @@ def analyze_sound(sample_path):
 
 
 def counter(source_path, matching_sample):
+    sample_crop_start = 5  # The first 4 seem to get damaged
+    sample_crop_end = 4
+
     config['source_path'] = source_path
     config['matching_samples'] = matching_sample
 
@@ -283,11 +288,11 @@ def counter(source_path, matching_sample):
 
             sample_series, sample_sr = librosa.load(sample_path, sr=None)  # load the sound from file
 
-            sample_frames, fft_window, n_columns = stft_raw(sample_series, sample_sr, win_length, hop_length, hz_count,
-                                                            dtype)
+            sample_frames, fft_window, n_columns = stft_raw(sample_series, sample_sr, WIN_LENGTH, HOP_LENGTH, HZ_COUNT,
+                                                            DTYPE)
 
             # Pre-allocate the STFT matrix
-            sample_data = np.empty((int(1 + n_fft // 2), sample_frames.shape[1]), dtype=dtype, order='F')
+            sample_data = np.empty((int(1 + N_FFT // 2), sample_frames.shape[1]), dtype=DTYPE, order='F')
 
             for bl_s in range(0, sample_data.shape[1], n_columns):  # process the data
                 bl_t = min(bl_s + n_columns, sample_data.shape[1])
@@ -326,9 +331,9 @@ def counter(source_path, matching_sample):
 
     logger.info('Processing')
 
-    source_frames, fft_window, n_columns = stft_raw(source_series, sample_rate, win_length, hop_length, hz_count, dtype)
+    source_frames, fft_window, n_columns = stft_raw(source_series, SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
 
-    if config['source_frame_end'] == None:
+    if config['source_frame_end'] is None:
         config['source_frame_end'] = source_frames.shape[1]
 
     # logger.info('From {} to {}'.format(config['source_frame_start'], config['source_frame_end']))
@@ -354,12 +359,12 @@ def counter(source_path, matching_sample):
 
         block_end = min(block_start + n_columns, config['source_frame_end'])
 
-        set_data = abs((scipy.fft.fft(fft_window * source_frames[:, block_start:block_end], axis=0)).astype(dtype))
+        set_data = abs((scipy.fft.fft(fft_window * source_frames[:, block_start:block_end], axis=0)).astype(DTYPE))
 
         # logger.info('{} to {} - {}'.format(block_start, block_end, str(datetime.timedelta(
         #     seconds=((float(block_start) * hop_length) / sample_rate)))))
 
-        x = 0
+        x: int = 0
         x_max = (block_end - block_start)
         while x < x_max:
 
@@ -378,15 +383,20 @@ def counter(source_path, matching_sample):
 
                 if sample_id in matching_complete:
                     continue
-
-                hz_score = abs(set_data[0:hz_count, x] - samples[sample_id][3][0:hz_count, sample_x])
+                dimensions = set_data.shape
+                if dimensions[1] == 0:
+                    for match in matches:
+                        cnt += 1
+                    return cnt
+                hz_score = abs(
+                    set_data[0:HZ_COUNT, max(0, min(x, dimensions[1] - 1))] - samples[sample_id][3][0:HZ_COUNT, sample_x])
                 hz_score = sum(hz_score) / float(len(hz_score))  # calculate similarity
 
                 if hz_score < config['matching_min_score']:  # Is it above or below the minimum to be count
 
                     if sample_x >= samples[sample_id][1]:
 
-                        match_start_time = ((float(x + block_start - samples[sample_id][1]) * hop_length) / sample_rate)
+                        match_start_time = ((float(x + block_start - samples[sample_id][1]) * HOP_LENGTH) / SAMPLE_RATE)
 
                         logger.info(
                             'Match {}/{}: Complete at {} @ {}'.format(matching_id, sample_id, sample_x,
@@ -394,17 +404,17 @@ def counter(source_path, matching_sample):
 
                         results_end[sample_id][sample_x] += 1
 
-                        if (config['matching_skip']) or (match_last_time == None) or (
+                        if (config['matching_skip']) or (match_last_time is None) or (
                                 (match_start_time - match_last_time) > config['matching_ignore']):
                             match_last_ignored = False
                         else:
                             match_last_ignored = True
 
-                        matches.append([sample_id, match_start_time, match_last_ignored]) #Add the match to the list
+                        matches.append([sample_id, match_start_time, match_last_ignored])  # Add the match to the list
                         match_last_time = match_start_time
 
                         if config['matching_skip']:
-                            match_skipping = ((config['matching_skip'] * sample_rate) / hop_length)
+                            match_skipping = ((config['matching_skip'] * SAMPLE_RATE) / HOP_LENGTH)
                             logger.info('Skipping {}'.format(match_skipping))
                             matching = {}
                             break  # No more 'matching' entires
@@ -419,7 +429,7 @@ def counter(source_path, matching_sample):
                         #                                                  config['matching_min_score']))
                         matching[matching_id][1] = sample_x
 
-                elif matching[matching_id][2] < sample_warn_allowance and sample_x > 10:
+                elif matching[matching_id][2] < SAMPLE_WARN_ALLOWANCE and sample_x > 10:
 
                     # logger.info('Match {}/{}: Warned at {} of {} ({} > {})'.format(matching_id, sample_id, sample_x,
                     #                                                                samples[sample_id][1], hz_score,
@@ -439,7 +449,7 @@ def counter(source_path, matching_sample):
 
             for matching_sample_id in matching_complete:
                 for matching_id in list(matching):
-                    if match_any_sample or matching[matching_id][0] == matching_sample_id:
+                    if MATCH_ANY_SAMPLE or matching[matching_id][0] == matching_sample_id:
                         sample_id = matching[matching_id][0]
                         sample_x = matching[matching_id][1]
                         # logger.info('Match {}/{}: Duplicate Complete at {}'.format(matching_id, sample_id, sample_x))
@@ -453,8 +463,9 @@ def counter(source_path, matching_sample):
                 sample_start = sample_info[0]
 
                 # TEST-1
-
-                hz_score = abs(set_data[0:hz_count, x] - sample_info[3][0:hz_count, sample_start])
+                dimensions = set_data.shape
+                hz_score = abs(
+                    set_data[0:HZ_COUNT, max(0, min(x, dimensions[1] - 1))] - sample_info[3][0:HZ_COUNT, sample_start])
                 hz_score = sum(hz_score) / float(len(hz_score))
 
                 if hz_score < config['matching_min_score']:
@@ -479,3 +490,11 @@ def counter(source_path, matching_sample):
     # --------------------------------------------------
     logger.info(datetime.datetime.now() - start_time)
     return cnt
+
+
+def main():
+    counter(os.path.join('us_sources', 'us8066_process_long.wav'), os.path.join('us_sounds', 'us_short.wav'))
+
+
+if __name__ == '__main__':
+    main()

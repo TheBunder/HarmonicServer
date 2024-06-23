@@ -6,7 +6,7 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<3.13"
 black = "^24.3.0"
 mypy = "^1.9.0"
 loguru = "^0.7.2"
@@ -18,6 +18,8 @@ dtw = "^1.4.0"
 dtw-python = "^1.4.2"
 dtaidistance = "^2.3.11"
 noisereduce = "^3.0.2"
+NumPy = "1.26"
+types-keyboard = "^0.13.2.20240310"
 
 
 [build-system]
