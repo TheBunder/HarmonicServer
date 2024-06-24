@@ -1,10 +1,11 @@
-import asyncio
 import atexit
 import hashlib
 import os
 import random
 import socket
 import sys
+import threading
+import time
 import wave
 from concurrent.futures import ThreadPoolExecutor
 
@@ -20,7 +21,7 @@ from tcp_by_size import send_with_size, recv_by_size
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Every user short file sound
-file_short_record:  dict = {}
+file_short_record: dict = {}
 file_long_record: dict = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
@@ -35,15 +36,15 @@ A = random.randint(3, 5000)
 srv_DPH_key = int(pow(G, A, P))
 
 
-async def prepare_hybrid_encryption(sock, client_addr, loop):
+def prepare_hybrid_encryption(sock, client_addr):
     # Get an encryption request from the user
-    await recv_by_size(sock, loop)
+    recv_by_size(sock)
 
     # Send the server's Diffie-Hellman public key (along with other parameters)
-    await send_with_size(sock, f"{srv_DPH_key}|{G}|{P}".encode(), loop)
+    send_with_size(sock, f"{srv_DPH_key}|{G}|{P}".encode())
 
     # Receive the client's Diffie-Hellman public key
-    cli_dph_key = await recv_by_size(sock, loop)
+    cli_dph_key = recv_by_size(sock)
 
     # Calculate the shared key
     secret_key = int(pow(int.from_bytes(cli_dph_key, "big"), A, P))
@@ -52,7 +53,7 @@ async def prepare_hybrid_encryption(sock, client_addr, loop):
     secret_key = hashlib.sha256(str(secret_key).encode()).digest()[:16]
 
     # Receive IV from the client
-    iv = await recv_by_size(sock, loop)
+    iv = recv_by_size(sock)
 
     logger.info(
         "server DPH key: {}| P: {}\nclient DPH key: {}| shared key: {}\nclient iv: {}",
@@ -66,7 +67,7 @@ async def prepare_hybrid_encryption(sock, client_addr, loop):
     new_client_key(client_addr, secret_key, iv)
 
 
-def login_user(username, password, DB, login_timeout_task):
+def login_user(username, password, DB, login_timeout_thread):
     """
     log in user into DB
     and return success or failure type
@@ -74,7 +75,7 @@ def login_user(username, password, DB, login_timeout_task):
     if DB.check_username_password(username, password):
         logger.info("User {} connected", username)
         # If client logged in, cancel the login timeout task
-        login_timeout_task.cancel()
+        login_timeout_thread.dont_kick()
         return "Username and password match"
     else:
         logger.info("Invalid login attempt for user {}", username)
@@ -269,7 +270,7 @@ def return_sound_names(username: str, DB):
     return '~'.join(sounds)
 
 
-def handle_request(request_code, data, DB, login_timeout_task):
+def handle_request(request_code, data, DB, login_timeout_thread):
     """
     Handle client request
     string :return: return message to send to client
@@ -282,7 +283,7 @@ def handle_request(request_code, data, DB, login_timeout_task):
                     request_code.split("~")[1],
                     request_code.split("~")[2],
                     DB,
-                    login_timeout_task,
+                    login_timeout_thread,
                 )
             case "SignUp":
                 to_send = sign_up_user(
@@ -325,21 +326,21 @@ def handle_request(request_code, data, DB, login_timeout_task):
         return "Error: {}", err
 
 
-async def on_new_client(client_socket: socket, addr):
+def on_new_client(client_socket: socket, addr):
     """Handles communication with a single client."""
     is_login = False
     db = DBHelper.DBHelper()
     db.create_table()
-    loop = asyncio.get_event_loop()
-    await prepare_hybrid_encryption(client_socket, addr, loop)
-    # Start login timeout task
-    login_timeout_task = asyncio.create_task(login_timeout(client_socket))
+    prepare_hybrid_encryption(client_socket, addr)
+    # Start login timeout thread
+    login_timeout_thread = AFKKicker(client_socket)
+    login_timeout_thread.start()
     while True:
         try:
             if not is_login:
-                data = await recv_decrypted(client_socket, addr, loop)
+                data = recv_decrypted(client_socket, addr)
             else:
-                data = await recv_by_size(client_socket, loop)
+                data = recv_by_size(client_socket)
             if not data:
                 logger.info("{}  Client disconnected", addr)
                 break
@@ -350,13 +351,13 @@ async def on_new_client(client_socket: socket, addr):
                 data = data[size_to_decode + 1:]
 
                 logger.trace("{} >> {}", addr, request_code)
-                data = handle_request(request_code, data, db, login_timeout_task)
+                data = handle_request(request_code, data, db, login_timeout_thread)
                 if data == "Username and password match":
                     is_login = True
             else:
                 logger.info("A message from {} was sent inappropriately", addr)
-            await send_with_size(
-                client_socket, data.encode("utf-8"), loop
+            send_with_size(
+                client_socket, data.encode("utf-8")
             )  # send data to the client
         except socket.error as e:
             logger.exception("{} Rais Socket Error", addr, e)
@@ -371,18 +372,23 @@ async def on_new_client(client_socket: socket, addr):
     client_socket.close()
 
 
-async def login_timeout(client_socket):
-    try:
-        await asyncio.sleep(300)
-    except asyncio.CancelledError:
-        # Task was cancelled
-        return
-    # If the client hasn't logged in within 5 minutes, cancel the client socket
-    client_socket.close()
+class AFKKicker(threading.Thread):
+    def __init__(self, client: socket):
+        threading.Thread.__init__(self)
+        self.client: socket = client
+        self.kick = False
+
+    def run(self):
+        time.sleep(5 * 60)  # Sleep for 60*5 seconds (5 minute)
+        if not self.kick:
+            self.client.close()
+
+    def dont_kick(self):
+        self.kick = True
 
 
 @logger.catch
-async def main():
+def main():
     host = "0.0.0.0"
     port = 2525
 
@@ -391,14 +397,12 @@ async def main():
     ) as s:  # Use a context manager to ensure socket closure
         s.bind((host, port))
         s.listen(5)
-        s.setblocking(False)
-
-        loop = asyncio.get_event_loop()
+        # s.setblocking(False)
 
         while True:
-            c, addr = await loop.sock_accept(s)
+            c, addr = s.accept()
             logger.info("New connection from: {}", addr)
-            loop.create_task(on_new_client(c, addr))
+            on_new_client(c, addr)
 
 
 def on_exit() -> None:
@@ -416,4 +420,4 @@ if __name__ == "__main__":
     logger.add("debug.log")
     atexit.register(on_exit)
     logger.info("Server ready")
-    asyncio.run(main())
+    main()

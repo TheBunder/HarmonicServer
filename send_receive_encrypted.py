@@ -11,19 +11,19 @@ def new_client_key(client_addr, aes_key, iv):
     print(CLIENTS_AES_INFO)
 
 
-def send_encrypted(sock, client_addr, to_send, loop):
+def send_encrypted(sock, client_addr, to_send):
     encrypt_cipher = AES.new(
         CLIENTS_AES_INFO[client_addr][0], AES.MODE_CBC, CLIENTS_AES_INFO[client_addr][1]
     )
     to_send = encrypt_cipher.encrypt(pad(to_send, AES.block_size))
-    tcp_by_size.send_with_size(sock, b64encode(to_send), loop)
+    tcp_by_size.send_with_size(sock, b64encode(to_send))
 
 
-async def recv_decrypted(sock, client_addr, loop):
+def recv_decrypted(sock, client_addr):
     decrypt_cipher = AES.new(
         CLIENTS_AES_INFO[client_addr][0], AES.MODE_CBC, CLIENTS_AES_INFO[client_addr][1]
     )# will return a value error if a user try to use the server without signing up.
-    received = await tcp_by_size.recv_by_size(sock, loop)
+    received = tcp_by_size.recv_by_size(sock)
     if received == b"":
         return b""
     original_data = unpad(

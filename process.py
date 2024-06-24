@@ -98,7 +98,7 @@ config = {
     'source_frame_end': None,  # (x * sample_rate) / hop_length)
 
     'matching_samples': os.path.join('samples', 'us_short.wav'),
-    'matching_min_score': 0.20,
+    'matching_min_score': 0.16,
     'matching_skip': 0,  # Jump forward X seconds after a match.
     'matching_ignore': 0,  # Ignore additional matches X seconds after the last one.
 
@@ -464,6 +464,10 @@ def counter(source_path, matching_sample):
 
                 # TEST-1
                 dimensions = set_data.shape
+                if dimensions[1] == 0:
+                    for match in matches:
+                        cnt += 1
+                    return cnt
                 hz_score = abs(
                     set_data[0:HZ_COUNT, max(0, min(x, dimensions[1] - 1))] - sample_info[3][0:HZ_COUNT, sample_start])
                 hz_score = sum(hz_score) / float(len(hz_score))
