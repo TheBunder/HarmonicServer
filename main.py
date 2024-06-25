@@ -25,7 +25,7 @@ file_short_record: dict = {}
 file_long_record: dict = {}
 
 # variables for the long record. package chunk (will probably be removed), And how similar the sound need to be.
-FRAMES_PER_SECOND = 48000
+FRAMES_PER_SECOND = 44100
 similarity_threshold = 0.55
 
 # variables for the encryption
@@ -34,6 +34,8 @@ G = 2
 P = int(p_str, 16)
 A = random.randint(3, 5000)
 srv_DPH_key = int(pow(G, A, P))
+
+users_file_path = "users_files"
 
 
 def prepare_hybrid_encryption(sock, client_addr):
@@ -74,7 +76,7 @@ def login_user(username, password, DB, login_timeout_thread):
     """
     if DB.check_username_password(username, password):
         logger.info("User {} connected", username)
-        # If client logged in, cancel the login timeout task
+        # If client logged in, cancel the login timeout kick task
         login_timeout_thread.dont_kick()
         return "Username and password match"
     else:
@@ -113,7 +115,7 @@ def save_short_record(username: str, state, content):
 
         if state == "1":  # check if it is the last part
             file_short_record[username] += content
-            detail_dir = os.path.join('.\\', username + '_sounds')
+            detail_dir = os.path.join('.\\', users_file_path, username + '_sounds')
             os.makedirs(detail_dir, exist_ok=True)
             filename = os.path.join(detail_dir, username + "_short.wav")
             with open(filename, "wb") as file:
@@ -135,7 +137,7 @@ def make_short_record(username: str, sound_name, DB):
     logger.info("Got packet: {}, {}", username, sound_name)
     try:
         exist_file = DB.get_file_name_from_sound(sound_name, username)
-        detail_dir = os.path.join('.\\', username + '_sounds')
+        detail_dir = os.path.join('.\\', users_file_path, username + '_sounds')
         os.makedirs(detail_dir, exist_ok=True)
         filename = os.path.join(detail_dir, username + "_short.wav")
         with open(exist_file, "rb") as f_src:  # copy sound into correct format
@@ -160,7 +162,9 @@ def count_occurrences(username: str, content: bytes):
     """
     logger.info("Got packet: {}", username)
     try:
-        filename = username + "_long.wav"
+        detail_dir = os.path.join('.\\', users_file_path, username + '_sources')
+        os.makedirs(detail_dir, exist_ok=True)
+        filename = os.path.join(detail_dir, username + "_long.wav")
 
         with wave.open(filename, mode="wb") as wav_file:  # creat sound file
             wav_file.setnchannels(1)
@@ -171,19 +175,20 @@ def count_occurrences(username: str, content: bytes):
         file_size = os.stat(filename).st_size
         logger.info("Wrote {} bytes to {}", file_size, filename)
 
-        sound_file_name = username + str(random.randint(0, 10000)) + "_process_long.wav"
+        sound_file_name = os.path.join(detail_dir, username + str(random.randint(0, 10000)) + "_process_long.wav")
         os.rename(filename, sound_file_name)
+        logger.info("Saved long record: {}", os.path.abspath(sound_file_name))
 
         # count occurrences
         logger.info("Sent to process")
         number_of_occurrences = counter.count_similar_sounds(
-            username + "_short.wav",
+            os.path.join('.\\', users_file_path, username + '_sounds', username + "_short.wav"),
             sound_file_name,
-            similarity_threshold,
+            similarity_threshold
         )
         logger.info("Number of occurrences: {}", number_of_occurrences)
-        # os.remove(sound_file_name)
-        return "Number of occurrences: " + str(number_of_occurrences)  # str(4)
+        os.remove(sound_file_name)
+        return "Number of occurrences: " + str(number_of_occurrences)
 
     except Exception as e:
         logger.exception("General Error", e)
@@ -204,7 +209,7 @@ def count_occurrences_py(username: str, state, content):
             file_long_record[username] = content
 
         if state == "1":  # check if it is the last part
-            detail_dir = os.path.join('.\\', username + '_sources')
+            detail_dir = os.path.join('.\\', users_file_path, username + '_sources')
             os.makedirs(detail_dir, exist_ok=True)
             filename = os.path.join(detail_dir, username + "_long.wav")
 
@@ -221,11 +226,11 @@ def count_occurrences_py(username: str, state, content):
             logger.info("Sent to process")
             number_of_occurrences = process.counter(
                 sound_file_name,
-                os.path.join('.\\', username + '_sounds', username + "_short.wav")
+                os.path.join('.\\', users_file_path, username + '_sounds', username + "_short.wav")
             )
             logger.info("Number of occurrences: {}", number_of_occurrences)
-            # os.remove(sound_file_name)
-            return "Number of occurrences: " + str(number_of_occurrences)  # str(4)
+            os.remove(sound_file_name)
+            return "Number of occurrences: " + str(number_of_occurrences)
         return "Got long record"
     except Exception as e:
         logger.exception("Error saving long record", e)
@@ -247,12 +252,15 @@ def save_record(sound_name: str, username: str, state, content, DB):
 
         if state == "1":  # check if it is the last part
             file_short_record[username] += content
+            detail_dir = os.path.join('.\\', users_file_path, username + '_saved_sounds')
+            os.makedirs(detail_dir, exist_ok=True)
             filename = "_" + username + "_" + sound_name + "_saved_Short.wav"
-            with open(filename, "wb") as file:  # write into file
+            file_path = os.path.join(detail_dir, filename)
+            with open(file_path, "wb") as file:  # write into file
                 file.write(file_short_record[username])
             file_short_record[username] = None
-            DB.insert_data_to_sounds_table(username, sound_name, filename)
-            logger.info("Saved file: {}", filename)
+            DB.insert_data_to_sounds_table(username, sound_name, file_path)
+            logger.info("Saved file: {}", file_path)
 
             return "Saved file"
         return "Got file part"
@@ -344,6 +352,7 @@ def on_new_client(client_socket: socket, addr):
             if not data:
                 logger.info("{}  Client disconnected", addr)
                 break
+            logger.info(data)
             if not data == b'message has invalid header':
                 size_to_decode = int(data[0])
 
@@ -397,7 +406,6 @@ def main():
     ) as s:  # Use a context manager to ensure socket closure
         s.bind((host, port))
         s.listen(5)
-        # s.setblocking(False)
 
         while True:
             c, addr = s.accept()

@@ -28,5 +28,5 @@ def recv_decrypted(sock, client_addr):
         return b""
     original_data = unpad(
         decrypt_cipher.decrypt(b64decode(received)), AES.block_size
-    )  # .decode().strip())  # Decrypt and then up-pad the result
+    )  # Decrypt and then up-pad the result
     return original_data

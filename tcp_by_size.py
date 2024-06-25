@@ -1,9 +1,5 @@
 __author__ = "Yossi"
 
-
-# from  tcp_by_size import send_with_size ,recv_by_size
-
-
 SIZE_HEADER_FORMAT = "000000000|"  # n digits for data size + one delimiter
 size_header_size = len(SIZE_HEADER_FORMAT)
 

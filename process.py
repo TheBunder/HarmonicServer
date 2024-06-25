@@ -18,15 +18,15 @@ HZ_COUNT: Final[int] = int(1 + N_FFT // 2)  # 1025 (Hz buckets)
 WIN_LENGTH: Final[int] = N_FFT
 HOP_LENGTH: Final[int] = int(WIN_LENGTH // 4)
 SAMPLE_RATE: Final[int] = 44100
-# sample_crop_start = 5  # The first 4 seem to get damaged
-# sample_crop_end = 4
+sample_crop_start = 5  # The first 4 seem to get damaged
+sample_crop_end = 4
 SAMPLE_WARN_ALLOWANCE: Final[int] = 3
 
 MATCH_ANY_SAMPLE: Final[bool] = True
 
 
 # --------------------------------------------------
-def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
+def stft_raw(series):
     # --------------------------------------------------
     # Config
 
@@ -36,7 +36,7 @@ def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
     # --------------------------------------------------
     # Get Window
 
-    fft_window = scipy.signal.get_window(window, win_length, fftbins=True)
+    fft_window = scipy.signal.get_window(window, WIN_LENGTH, fftbins=True)
 
     # --------------------------------------------------
     # Pad the window out to n_fft size... Wrapper for
@@ -70,18 +70,18 @@ def stft_raw(series, sample_rate, win_length, hop_length, hz_count, dtype):
     # Window the time series.
 
     # Compute the number of frames that will fit. The end may get truncated.
-    frame_count = 1 + int((len(series) - N_FFT) / hop_length)  # Where n_fft = frame_length
+    frame_count = 1 + int((len(series) - N_FFT) / HOP_LENGTH)  # Where n_fft = frame_length
 
     # Vertical stride is one sample
     # Horizontal stride is `hop_length` samples
     frames_data = np.lib.stride_tricks.as_strided(series, shape=(N_FFT, frame_count),
-                                                  strides=(series.itemsize, hop_length * series.itemsize))
+                                                  strides=(series.itemsize, HOP_LENGTH * series.itemsize))
 
     # --------------------------------------------------
     # how many columns can we fit within MAX_MEM_BLOCK
 
     MAX_MEM_BLOCK = 2 ** 8 * 2 ** 10
-    n_columns = int(MAX_MEM_BLOCK / (hz_count * dtype(0).itemsize))
+    n_columns = int(MAX_MEM_BLOCK / (HZ_COUNT * DTYPE(0).itemsize))
 
     # --------------------------------------------------
     # Return
@@ -98,7 +98,7 @@ config = {
     'source_frame_end': None,  # (x * sample_rate) / hop_length)
 
     'matching_samples': os.path.join('samples', 'us_short.wav'),
-    'matching_min_score': 0.16,
+    'matching_min_score': 0.15,
     'matching_skip': 0,  # Jump forward X seconds after a match.
     'matching_ignore': 0,  # Ignore additional matches X seconds after the last one.
 
@@ -110,21 +110,16 @@ config = {
 def analyze_sound(sample_path):
     # Config
 
-    # sample_path = sample_info[0]
-    sample_crop_start = 5  # The first 4 seem to get damaged
-    sample_crop_end = 4
-
     sample_path_split = os.path.split(sample_path)
     sample_ext_split = os.path.splitext(sample_path_split[1])
 
-    # series_data = sample_info[1]
     series_data = librosa.load(sample_path, sr=None)
     series_max_length = series_data[0].shape[0]
 
     # --------------------------------------------------
     # Original frame length
 
-    stft_frames, fft_window, n_columns = stft_raw(series_data[0], SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
+    stft_frames, fft_window, n_columns = stft_raw(series_data[0])
 
     stft_length_source = stft_frames.shape[1]
 
@@ -144,7 +139,7 @@ def analyze_sound(sample_path):
     # --------------------------------------------------
     # STFT data
 
-    stft_frames, fft_window, n_columns = stft_raw(series_data[0], SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
+    stft_frames, fft_window, n_columns = stft_raw(series_data[0])
 
     # Pre-allocate the STFT matrix
     stft_data = np.empty((int(1 + N_FFT // 2), stft_frames.shape[1]), dtype=DTYPE, order='F')
@@ -232,9 +227,6 @@ def analyze_sound(sample_path):
 
 
 def counter(source_path, matching_sample):
-    sample_crop_start = 5  # The first 4 seem to get damaged
-    sample_crop_end = 4
-
     config['source_path'] = source_path
     config['matching_samples'] = matching_sample
 
@@ -259,7 +251,7 @@ def counter(source_path, matching_sample):
 
     source_series, source_sr = librosa.load(config['source_path'], sr=None)
 
-    source_time_total = (float(len(source_series)) / source_sr)
+    # source_time_total = (float(len(source_series)) / source_sr)
 
     # logger.info('{} ({} & {})'.format(config['source_path'], source_time_total, source_sr))
 
@@ -288,8 +280,7 @@ def counter(source_path, matching_sample):
 
             sample_series, sample_sr = librosa.load(sample_path, sr=None)  # load the sound from file
 
-            sample_frames, fft_window, n_columns = stft_raw(sample_series, sample_sr, WIN_LENGTH, HOP_LENGTH, HZ_COUNT,
-                                                            DTYPE)
+            sample_frames, fft_window, n_columns = stft_raw(sample_series)
 
             # Pre-allocate the STFT matrix
             sample_data = np.empty((int(1 + N_FFT // 2), sample_frames.shape[1]), dtype=DTYPE, order='F')
@@ -331,7 +322,7 @@ def counter(source_path, matching_sample):
 
     logger.info('Processing')
 
-    source_frames, fft_window, n_columns = stft_raw(source_series, SAMPLE_RATE, WIN_LENGTH, HOP_LENGTH, HZ_COUNT, DTYPE)
+    source_frames, fft_window, n_columns = stft_raw(source_series)
 
     if config['source_frame_end'] is None:
         config['source_frame_end'] = source_frames.shape[1]
@@ -389,7 +380,8 @@ def counter(source_path, matching_sample):
                         cnt += 1
                     return cnt
                 hz_score = abs(
-                    set_data[0:HZ_COUNT, max(0, min(x, dimensions[1] - 1))] - samples[sample_id][3][0:HZ_COUNT, sample_x])
+                    set_data[0:HZ_COUNT, max(0, min(x, dimensions[1] - 1))] - samples[sample_id][3][0:HZ_COUNT,
+                                                                              sample_x])
                 hz_score = sum(hz_score) / float(len(hz_score))  # calculate similarity
 
                 if hz_score < config['matching_min_score']:  # Is it above or below the minimum to be count
