@@ -4,6 +4,10 @@ This repository contains the Python-based server-side code for Harmonic, an appl
 
 Harmonic addresses the common need to count recurring sounds within a longer audio clip. For example, a user can record the sound of a single keyboard key press and then record a longer session of typing. Harmonic will then automatically count how many times that key press sound occurred in the recording. This automation has broad applications, from enhancing sports performance (e.g., counting punches or jump rope repetitions) to research and data analysis.
 
+## Project Details
+
+For a comprehensive overview of the project, please refer to the [Technical Documentation](harmonic_technical_documentation.pdf).
+
 ## System Description
 
 Harmonic utilizes a client-server architecture. The server is responsible for:
