@@ -48,36 +48,34 @@ Harmonic utilizes a client-server architecture. The server is responsible for:
 *   `sys` (for system-specific parameters)
 *   `wave` (for WAV file handling)
 
-
 ## Installation
 
-1.  **Prerequisites:**
-    *   Python installed on your system.
+1. **Prerequisites:**
+    * Python installed on your system.
+    * Poetry installed on your system. You can install Poetry using:
+       ```bash
+       pip install poetry
+       ```
+    * **Important:** The client application and the server *must* be on the same private network (e.g., behind a NAT router). This is essential for communication between the client and server.
 
-2.  **Steps:**
+2. **Steps:**
 
-    **Recommended: Using a Virtual Environment**
+    1. Clone the repository:
+       ```bash
+       git clone [https://github.com/TheBunder/HarmonicServer.git](https://github.com/TheBunder/HarmonicServer.git)
+       ```
 
-    1.  Create a virtual environment:
-        ```bash
-        python3 -m venv .venv  # Or python -m venv .venv
-        ```
-    2.  Activate the virtual environment:
-        ```bash
-        source .venv\Scripts\activate
-        ```
+    2. Navigate to the project directory:
+       ```bash
+       cd HarmonicServer  # Or the actual name of your project's directory
+       ```
 
-    3.  Clone the repository:
-        ```bash
-        git clone (https://github.com/TheBunder/HarmonicServer.git)
-        ```
-
-    4.  Navigate to the project directory:
-
-    5.  Install the required Python packages using Poetry (recommended) or pip:
+    3. Install the project dependencies using Poetry:
        ```bash
        poetry install
        ```
+       *(Poetry will automatically create a virtual environment (if one doesn't exist) and install the dependencies listed in your `pyproject.toml` file.)*
+
 
 ## Usage
 
